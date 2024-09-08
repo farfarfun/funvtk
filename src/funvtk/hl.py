@@ -1,5 +1,7 @@
-from .vtk import *  # VtkFile, VtkUnstructuredGrid, etc.
 import numpy as np
+
+from funvtk.vtk import *  # VtkFile, VtkUnstructuredGrid, etc.
+from scipy.spatial import Delaunay
 
 
 # =================================
@@ -230,79 +232,79 @@ def structuredToVTK(path, x, y, z, cellData=None, pointData=None, comments=None)
     return w.getFileName()
 
 
-# def gridToVTK(path, x, y, z, cellData = None, pointData = None, comments = None):
-# """
-# Writes data values as a rectilinear or rectangular grid.
+def gridToVTK(path, x, y, z, cellData=None, pointData=None, comments=None):
+    """
+    Writes data values as a rectilinear or rectangular grid.
 
-# PARAMETERS:
-# path: name of the file without extension where data should be saved.
-# x, y, z: coordinates of the nodes of the grid. They can be 1D or 3D depending if
-# the grid should be saved as a rectilinear or logically structured grid, respectively.
-# Arrays should contain coordinates of the nodes of the grid.
-# If arrays are 1D, then the grid should be Cartesian, i.e. faces in all cells are orthogonal.
-# If arrays are 3D, then the grid should be logically structured with hexahedral cells.
-# In both cases the arrays dimensions should be equal to the number of nodes of the grid.
-# cellData: dictionary containing arrays with cell centered data.
-# Keys should be the names of the data arrays.
-# Arrays must have the same dimensions in all directions and must contain
-# only scalar data.
-# pointData: dictionary containing arrays with node centered data.
-# Keys should be the names of the data arrays.
-# Arrays must have same dimension in each direction and
-# they should be equal to the dimensions of the cell data plus one and
-# must contain only scalar data.
-# comments: list of comment strings, which will be added to the header section of the file.
+    PARAMETERS:
+    path: name of the file without extension where data should be saved.
+    x, y, z: coordinates of the nodes of the grid. They can be 1D or 3D depending if
+    the grid should be saved as a rectilinear or logically structured grid, respectively.
+    Arrays should contain coordinates of the nodes of the grid.
+    If arrays are 1D, then the grid should be Cartesian, i.e. faces in all cells are orthogonal.
+    If arrays are 3D, then the grid should be logically structured with hexahedral cells.
+    In both cases the arrays dimensions should be equal to the number of nodes of the grid.
+    cellData: dictionary containing arrays with cell centered data.
+    Keys should be the names of the data arrays.
+    Arrays must have the same dimensions in all directions and must contain
+    only scalar data.
+    pointData: dictionary containing arrays with node centered data.
+    Keys should be the names of the data arrays.
+    Arrays must have same dimension in each direction and
+    they should be equal to the dimensions of the cell data plus one and
+    must contain only scalar data.
+    comments: list of comment strings, which will be added to the header section of the file.
 
-# RETURNS:
-# Full path to saved file.
+    RETURNS:
+    Full path to saved file.
 
-# """
-# # Extract dimensions
-# start = (0,0,0)
-# nx = ny = nz = 0
+    """
+    # Extract dimensions
+    start = (0, 0, 0)
+    nx = ny = nz = 0
 
-# if (x.ndim == 1 and y.ndim == 1 and z.ndim == 1):
-# nx, ny, nz = x.size - 1, y.size - 1, z.size - 1
-# isRect = True
-# ftype = VtkRectilinearGrid
-# elif (x.ndim == 3 and y.ndim == 3 and z.ndim == 3):
-# s = x.shape
-# nx, ny, nz = s[0] - 1, s[1] - 1, s[2] - 1
-# isRect = False
-# ftype = VtkStructuredGrid
-# else:
-# assert(False)
-# end = (nx, ny, nz)
+    if x.ndim == 1 and y.ndim == 1 and z.ndim == 1:
+        nx, ny, nz = x.size - 1, y.size - 1, z.size - 1
+        isRect = True
+        ftype = VtkRectilinearGrid
+    elif x.ndim == 3 and y.ndim == 3 and z.ndim == 3:
+        s = x.shape
+        nx, ny, nz = s[0] - 1, s[1] - 1, s[2] - 1
+        isRect = False
+        ftype = VtkStructuredGrid
+    else:
+        assert False
 
+    end = (nx, ny, nz)
+    w = VtkFile(path, ftype)
+    if comments:
+        w.addComments(comments)
+    w.openGrid(start=start, end=end)
+    w.openPiece(start=start, end=end)
 
-# w =  VtkFile(path, ftype)
-# if comments: w.addComments(comments)
-# w.openGrid(start = start, end = end)
-# w.openPiece(start = start, end = end)
+    if isRect:
+        w.openElement("Coordinates")
+        w.addData("x_coordinates", x)
+        w.addData("y_coordinates", y)
+        w.addData("z_coordinates", z)
+        w.closeElement("Coordinates")
+    else:
+        w.openElement("Points")
+        w.addData("points", (x, y, z))
+        w.closeElement("Points")
 
-# if isRect:
-# w.openElement("Coordinates")
-# w.addData("x_coordinates", x)
-# w.addData("y_coordinates", y)
-# w.addData("z_coordinates", z)
-# w.closeElement("Coordinates")
-# else:
-# w.openElement("Points")
-# w.addData("points", (x,y,z))
-# w.closeElement("Points")
-
-# _addDataToFile(w, cellData, pointData)
-# w.closePiece()
-# w.closeGrid()
-# # Write coordinates
-# if isRect:
-# w.appendData(x).appendData(y).appendData(z)
-# else:
-# w.appendData( (x,y,z) )
-# # Write data
-# _appendDataToFile(w, cellData, pointData)
-# w.save()
-# return w.getFileName()
+        _addDataToFile(w, cellData, pointData)
+        w.closePiece()
+        w.closeGrid()
+        # Write coordinates
+    if isRect:
+        w.appendData(x).appendData(y).appendData(z)
+    else:
+        w.appendData((x, y, z))
+    # Write data
+    _appendDataToFile(w, cellData, pointData)
+    w.save()
+    return w.getFileName()
 
 
 # ==============================================================================
@@ -394,13 +396,6 @@ def pointsToVTKAsTIN(path, x, y, z, data=None, comments=None, ndim=2):
 
     REQUIRES: Scipy > 1.2.
     """
-    # TODO: Check if it makes and it would be possible to add cellData.
-    try:
-        from scipy.spatial import Delaunay
-    except:
-        print(
-            "Failed to import scipy.spatial. Please install it if it is not installed."
-        )
 
     assert len(x) == len(y) and len(x) == len(z)
     assert (ndim == 2) or (ndim == 3)

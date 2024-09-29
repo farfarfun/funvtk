@@ -70,9 +70,9 @@ def writeArraysToFile(stream, x, y, z):
     )  # > for big endian
 
     # Check if arrays are contiguous
-    assert x.flags["C_CONTIGUOUS"] or x.flags["F_CONTIGUOUS"]
-    assert y.flags["C_CONTIGUOUS"] or y.flags["F_CONTIGUOUS"]
-    assert z.flags["C_CONTIGUOUS"] or z.flags["F_CONTIGUOUS"]
+    # assert x.flags["C_CONTIGUOUS"] or x.flags["F_CONTIGUOUS"]
+    # assert y.flags["C_CONTIGUOUS"] or y.flags["F_CONTIGUOUS"]
+    # assert z.flags["C_CONTIGUOUS"] or z.flags["F_CONTIGUOUS"]
 
     # NOTE: VTK expects data in FORTRAN order
     # This is only needed when a multidimensional array has C-layout

@@ -1,6 +1,6 @@
 import numpy as np
 
-from funvtk.vtk import *  # VtkFile, VtkUnstructuredGrid, etc.
+from .vtk import *  # VtkFile, VtkUnstructuredGrid, etc.
 from scipy.spatial import Delaunay
 
 

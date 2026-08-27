@@ -14,3 +14,8 @@ include = "*"
 
 [tool.poetry.dependencies]
 python = "^3.9"
+numpy = "*"
+scipy = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"

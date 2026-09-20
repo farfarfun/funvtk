@@ -2,7 +2,7 @@
 
 ######################################################################################
 # MIT License
-# 
+#
 # Copyright (c) 2010-2021 Paulo A. Herrera
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -14,7 +14,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -30,20 +30,21 @@
 # * nodes and topology through a connectivity and offset lists.          *
 # * Check the VTK file format for details of the unstructured grid.      *
 # ************************************************************************
-import os
-from evtk.hl import unstructuredGridToVTK
-from evtk.vtk import VtkTriangle, VtkQuad
+from pathlib import Path
+
 import numpy as np
 
+from funvtk.hl import unstructuredGridToVTK
+from funvtk.vtk import VtkQuad, VtkTriangle
+
 FILE_PATH = "./unstructured"
+
+
 def clean():
-    try:
-        os.remove(FILE_PATH + ".vtu")
-    except:
-        pass
-        
+    Path(FILE_PATH + ".vtu").unlink(missing_ok=True)
+
+
 def run():
-    print("Running unstructured...")
 
     # Define vertices
     x = np.zeros(6)
@@ -60,8 +61,8 @@ def run():
     # Define connectivity or vertices that belongs to each element
     conn = np.zeros(10)
 
-    conn[0], conn[1], conn[2] = 0, 1, 3              # first triangle
-    conn[3], conn[4], conn[5] = 1, 4, 3              # second triangle
+    conn[0], conn[1], conn[2] = 0, 1, 3  # first triangle
+    conn[3], conn[4], conn[5] = 1, 4, 3  # second triangle
     conn[6], conn[7], conn[8], conn[9] = 1, 2, 5, 4  # rectangle
 
     # Define offset of last vertex of each element
@@ -75,15 +76,27 @@ def run():
     ctype = np.zeros(3)
     ctype[0], ctype[1] = VtkTriangle.tid, VtkTriangle.tid
     ctype[2] = VtkQuad.tid
-    
+
     cd = np.random.rand(3)
-    cellData = {"pressure" : cd}
-    
+    cellData = {"pressure": cd}
+
     pd = np.random.rand(6)
-    pointData = {"ec" : pd}
-    
-    comments = [ "comment 1", "comment 2" ]
-    unstructuredGridToVTK(FILE_PATH, x, y, z, connectivity = conn, offsets = offset, cell_types = ctype, cellData = cellData, pointData = pointData, comments = comments)
+    pointData = {"ec": pd}
+
+    comments = ["comment 1", "comment 2"]
+    unstructuredGridToVTK(
+        FILE_PATH,
+        x,
+        y,
+        z,
+        connectivity=conn,
+        offsets=offset,
+        cell_types=ctype,
+        cellData=cellData,
+        pointData=pointData,
+        comments=comments,
+    )
+
 
 if __name__ == "__main__":
     run()

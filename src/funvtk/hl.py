@@ -1,14 +1,29 @@
 import numpy as np
-
-from .vtk import *  # VtkFile, VtkUnstructuredGrid, etc.
+from numpy.typing import ArrayLike, NDArray
 from scipy.spatial import Delaunay
 
+from .vtk import (
+    VtkFile,
+    VtkImageData,
+    VtkLine,
+    VtkPixel,
+    VtkPolyLine,
+    VtkRectilinearGrid,
+    VtkStructuredGrid,
+    VtkTetra,
+    VtkTriangle,
+    VtkUnstructuredGrid,
+    VtkVertex,
+)
+
+_Data = dict[str, ArrayLike]
+
 
 # =================================
-#       Helper functions
+#       辅助函数
 # =================================
 def _addDataToFile(vtkFile, cellData, pointData):
-    # Point data
+    # 点数据
     if pointData:
         keys = sorted(list(pointData.keys()))
         vtkFile.openData("Point", scalars=keys[0])
@@ -17,7 +32,7 @@ def _addDataToFile(vtkFile, cellData, pointData):
             vtkFile.addData(key, data)
         vtkFile.closeData("Point")
 
-    # Cell data
+    # 单元数据
     if cellData:
         keys = sorted(list(cellData.keys()))
         vtkFile.openData("Cell", scalars=keys[0])
@@ -28,14 +43,14 @@ def _addDataToFile(vtkFile, cellData, pointData):
 
 
 def _appendDataToFile(vtkFile, cellData, pointData):
-    # Append data to binary section
-    if pointData != None:
+    # 将数据追加到二进制区段
+    if pointData is not None:
         keys = sorted(list(pointData.keys()))
         for key in keys:
             data = pointData[key]
             vtkFile.appendData(data)
 
-    if cellData != None:
+    if cellData is not None:
         keys = sorted(list(cellData.keys()))
         for key in keys:
             data = cellData[key]
@@ -43,8 +58,7 @@ def _appendDataToFile(vtkFile, cellData, pointData):
 
 
 def __convertListToArray(list1d):
-    """If data is a list and no a Numpy array, then it convert it
-    to an array, otherwise return the same array"""
+    """将列表或元组转为 NumPy 数组，数组原样返回。"""
     if (list1d is not None) and (not type(list1d).__name__ == "ndarray"):
         assert isinstance(list1d, (list, tuple))
         return np.array(list1d)
@@ -53,9 +67,7 @@ def __convertListToArray(list1d):
 
 
 def __convertDictListToArrays(data):
-    """If data in dictironary are lists and no a Numpy array,
-    then it creates a new dictionary and convert the list to arrays,
-    otherwise return the same dictionary"""
+    """将字典中的列表或元组值转为 NumPy 数组。"""
     if data is not None:
         dict = {}
         for k, list1d in data.items():
@@ -66,54 +78,38 @@ def __convertDictListToArrays(data):
 
 
 # =================================
-#       High level functions
+#       高层函数
 # =================================
 def imageToVTK(
-    path,
-    origin=(0.0, 0.0, 0.0),
-    spacing=(1.0, 1.0, 1.0),
-    cellData=None,
-    pointData=None,
-    comments=None,
-):
-    """Exports data values as a rectangular image.
+    path: str,
+    origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    spacing: tuple[float, float, float] = (1.0, 1.0, 1.0),
+    cellData: _Data | None = None,
+    pointData: _Data | None = None,
+    comments: list[str] | None = None,
+) -> str:
+    """将规则图像数据写入 VTK 文件。
 
-    PARAMETERS:
-        path: name of the file without extension where data should be saved.
-        origin: grid origin (default = (0,0,0))
-        spacing: grid spacing (default = (1,1,1))
-        cellData: dictionary containing arrays with cell centered data.
-                  Keys should be the names of the data arrays.
-                  Arrays must have the same dimensions in all directions and must contain
-                  only scalar data.
-        nodeData: dictionary containing arrays with node centered data.
-                  Keys should be the names of the data arrays.
-                  Arrays must have same dimension in each direction and
-                  they should be equal to the dimensions of the cell data plus one and
-                  must contain only scalar data.
-        comments: list of comment strings, which will be added to the header section of the file.
-
-     RETURNS:
-        Full path to saved file.
-
-    NOTE: At least, cellData or pointData must be present to infer the dimensions of the image.
+    ``path`` 不含扩展名；``origin`` 和 ``spacing`` 分别指定网格原点与间距。
+    ``cellData``、``pointData`` 是名称到数据数组的映射，至少提供其中一个以推断
+    网格尺寸。``comments`` 会写入 XML 头部。返回生成文件的绝对路径。
     """
-    assert cellData != None or pointData != None
+    assert cellData is not None or pointData is not None
 
-    # Extract dimensions
+    # 推断网格尺寸
     start = (0, 0, 0)
     end = None
-    if cellData != None:
+    if cellData is not None:
         keys = list(cellData.keys())
         data = cellData[keys[0]]
         end = data.shape
-    elif pointData != None:
+    elif pointData is not None:
         keys = list(pointData.keys())
         data = pointData[keys[0]]
         end = data.shape
         end = (end[0] - 1, end[1] - 1, end[2] - 1)
 
-    # Write data to file
+    # 写入文件
     w = VtkFile(path, VtkImageData)
     if comments:
         w.addComments(comments)
@@ -128,34 +124,25 @@ def imageToVTK(
 
 
 # ==============================================================================
-def rectilinearToVTK(path, x, y, z, cellData=None, pointData=None, comments=None):
-    """
-    Writes data values as a rectilinear or rectangular grid.
+def rectilinearToVTK(
+    path: str,
+    x: NDArray,
+    y: NDArray,
+    z: NDArray,
+    cellData: _Data | None = None,
+    pointData: _Data | None = None,
+    comments: list[str] | None = None,
+) -> str:
+    """将直角坐标网格写入 VTK 文件。
 
-    PARAMETERS:
-        path: name of the file without extension where data should be saved.
-        x, y, z: coordinates of the nodes of the grid as 1D arrays.
-                 The grid should be Cartesian, i.e. faces in all cells are orthogonal.
-                 Arrays size should be equal to the number of nodes of the grid in each direction.
-        cellData: dictionary containing arrays with cell centered data.
-                  Keys should be the names of the data arrays.
-                  Arrays must have the same dimensions in all directions and must contain
-                  only scalar data.
-        pointData: dictionary containing arrays with node centered data.
-                   Keys should be the names of the data arrays.
-                   Arrays must have same dimension in each direction and
-                   they should be equal to the dimensions of the cell data plus one and
-                   must contain only scalar data.
-        comments: list of comment strings, which will be added to the header section of the file.
-
-    RETURNS:
-        Full path to saved file.
-
+    ``x``、``y``、``z`` 必须是一维节点坐标数组。可通过 ``cellData`` 和
+    ``pointData`` 写入单元及点数据，通过 ``comments`` 写入头部注释。
+    返回生成文件的绝对路径。
     """
     assert x.ndim == 1 and y.ndim == 1 and z.ndim == 1, "Wrong array dimension"
     ftype = VtkRectilinearGrid
     nx, ny, nz = x.size - 1, y.size - 1, z.size - 1
-    # Extract dimensions
+    # 推断网格尺寸
     start = (0, 0, 0)
     end = (nx, ny, nz)
 
@@ -174,37 +161,27 @@ def rectilinearToVTK(path, x, y, z, cellData=None, pointData=None, comments=None
     _addDataToFile(w, cellData, pointData)
     w.closePiece()
     w.closeGrid()
-    # Write coordinates
+    # 写入坐标
     w.appendData(x).appendData(y).appendData(z)
-    # Write data
+    # 写入数据
     _appendDataToFile(w, cellData, pointData)
     w.save()
     return w.getFileName()
 
 
-def structuredToVTK(path, x, y, z, cellData=None, pointData=None, comments=None):
-    """
-    Writes data values as a rectilinear or rectangular grid.
+def structuredToVTK(
+    path: str,
+    x: NDArray,
+    y: NDArray,
+    z: NDArray,
+    cellData: _Data | None = None,
+    pointData: _Data | None = None,
+    comments: list[str] | None = None,
+) -> str:
+    """将逻辑结构网格写入 VTK 文件。
 
-    PARAMETERS:
-        path: name of the file without extension where data should be saved.
-        x, y, z: coordinates of the nodes of the grid as 3D arrays.
-                 The grid should be structured, i.e. all cells should have the same number of neighbors.
-                 Arrays size in each dimension should be equal to the number of nodes of the grid in each direction.
-        cellData: dictionary containing arrays with cell centered data.
-                  Keys should be the names of the data arrays.
-                  Arrays must have the same dimensions in all directions and must contain
-                  only scalar data.
-        pointData: dictionary containing arrays with node centered data.
-                   Keys should be the names of the data arrays.
-                   Arrays must have same dimension in each direction and
-                   they should be equal to the dimensions of the cell data plus one and
-                   must contain only scalar data.
-        comments: list of comment strings, which will be added to the header section of the file.
-
-    RETURNS:
-        Full path to saved file.
-
+    ``x``、``y``、``z`` 必须是形状相同的三维节点坐标数组。可通过
+    ``cellData`` 和 ``pointData`` 写入单元及点数据。返回生成文件的绝对路径。
     """
     assert x.ndim == 3 and y.ndim == 3 and z.ndim == 3, "Wrong arrays dimensions"
 
@@ -232,34 +209,21 @@ def structuredToVTK(path, x, y, z, cellData=None, pointData=None, comments=None)
     return w.getFileName()
 
 
-def gridToVTK(path, x, y, z, cellData=None, pointData=None, comments=None):
+def gridToVTK(
+    path: str,
+    x: NDArray,
+    y: NDArray,
+    z: NDArray,
+    cellData: _Data | None = None,
+    pointData: _Data | None = None,
+    comments: list[str] | None = None,
+) -> str:
+    """根据坐标维度写入直角坐标网格或逻辑结构网格。
+
+    一维 ``x``、``y``、``z`` 生成直角坐标网格，三维数组生成逻辑结构网格。
+    ``cellData``、``pointData`` 分别提供单元和点数据。返回生成文件的绝对路径。
     """
-    Writes data values as a rectilinear or rectangular grid.
-
-    PARAMETERS:
-    path: name of the file without extension where data should be saved.
-    x, y, z: coordinates of the nodes of the grid. They can be 1D or 3D depending if
-    the grid should be saved as a rectilinear or logically structured grid, respectively.
-    Arrays should contain coordinates of the nodes of the grid.
-    If arrays are 1D, then the grid should be Cartesian, i.e. faces in all cells are orthogonal.
-    If arrays are 3D, then the grid should be logically structured with hexahedral cells.
-    In both cases the arrays dimensions should be equal to the number of nodes of the grid.
-    cellData: dictionary containing arrays with cell centered data.
-    Keys should be the names of the data arrays.
-    Arrays must have the same dimensions in all directions and must contain
-    only scalar data.
-    pointData: dictionary containing arrays with node centered data.
-    Keys should be the names of the data arrays.
-    Arrays must have same dimension in each direction and
-    they should be equal to the dimensions of the cell data plus one and
-    must contain only scalar data.
-    comments: list of comment strings, which will be added to the header section of the file.
-
-    RETURNS:
-    Full path to saved file.
-
-    """
-    # Extract dimensions
+    # 推断网格尺寸
     start = (0, 0, 0)
     nx = ny = nz = 0
 
@@ -293,36 +257,33 @@ def gridToVTK(path, x, y, z, cellData=None, pointData=None, comments=None):
         w.addData("points", (x, y, z))
         w.closeElement("Points")
 
-        _addDataToFile(w, cellData, pointData)
-        w.closePiece()
-        w.closeGrid()
-        # Write coordinates
+    _addDataToFile(w, cellData, pointData)
+    w.closePiece()
+    w.closeGrid()
+    # 写入坐标
     if isRect:
         w.appendData(x).appendData(y).appendData(z)
     else:
         w.appendData((x, y, z))
-    # Write data
+    # 写入数据
     _appendDataToFile(w, cellData, pointData)
     w.save()
     return w.getFileName()
 
 
 # ==============================================================================
-def pointsToVTK(path, x, y, z, data=None, comments=None):
-    """
-    Export points and associated data as an unstructured grid.
+def pointsToVTK(
+    path: str,
+    x: ArrayLike,
+    y: ArrayLike,
+    z: ArrayLike,
+    data: _Data | None = None,
+    comments: list[str] | None = None,
+) -> str:
+    """将离散点及其数据写入 VTK 非结构网格。
 
-    PARAMETERS:
-        path: name of the file without extension where data should be saved.
-        x, y, z: 1D list-type object (list, tuple or numpy) with coordinates of the points.
-        data: dictionary with variables associated to each point.
-              Keys should be the names of the variable stored in each array.
-              All 1D list-type object (list, tuple or numpy) must have the same number of elements.
-        comments: list of comment strings, which will be added to the header section of the file.
-
-    RETURNS:
-        Full path to saved file.
-
+    ``x``、``y``、``z`` 是长度相同的一维坐标序列，``data`` 是点数据名称到
+    等长序列的映射。返回生成文件的绝对路径。
     """
     assert len(x) == len(y) == len(z)
     x = __convertListToArray(x)
@@ -332,13 +293,11 @@ def pointsToVTK(path, x, y, z, data=None, comments=None):
 
     npoints = len(x)
 
-    # create some temporary arrays to write grid topology
+    # 构造网格拓扑数组
     offsets = np.arange(
         start=1, stop=npoints + 1, dtype="int32"
-    )  # index of last node in each cell
-    connectivity = np.arange(
-        npoints, dtype="int32"
-    )  # each point is only connected to itself
+    )  # 每个单元最后一个节点的偏移
+    connectivity = np.arange(npoints, dtype="int32")  # 每个点仅与自身连接
     cell_types = np.empty(npoints, dtype="uint8")
 
     cell_types[:] = VtkVertex.tid
@@ -372,29 +331,20 @@ def pointsToVTK(path, x, y, z, data=None, comments=None):
 
 
 # ==============================================================================
-def pointsToVTKAsTIN(path, x, y, z, data=None, comments=None, ndim=2):
-    """
-    Export points and associated data as a triangula irregular grid.
-    It builds a triangular grid that has the input points as nodes
-    using the Delaunay triangulation function in Scipy, which requires
-    a convex set of points (check the documentation for further details
-    https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.Delaunay.html).
+def pointsToVTKAsTIN(
+    path: str,
+    x: ArrayLike,
+    y: ArrayLike,
+    z: ArrayLike,
+    data: _Data | None = None,
+    comments: list[str] | None = None,
+    ndim: int = 2,
+) -> str:
+    """对离散点执行 Delaunay 剖分并写入 VTK 非结构网格。
 
-    PARAMETERS:
-        path: name of the file without extension where data should be saved.
-        x, y, z: 1D list-type object (list, tuple or numpy) with coordinates of the points.
-        data: dictionary with variables associated to each point.
-              Keys should be the names of the variable stored in each array.
-              All 1D list-type object (list, tuple or numpy) must have the same number of elements.
-        comments: list of comment strings, which will be added to the header section of the file.
-        ndim: is the number of dimensions considered when calling Delaunay.
-              If ndim = 2, then only coordinates x and y are passed.
-              If ndim = 3, then x, y and z coordinates are passed.
-
-    RETURNS:
-        Full path to saved file.
-
-    REQUIRES: Scipy > 1.2.
+    ``x``、``y``、``z`` 是长度相同的坐标序列。``ndim`` 为 2 时使用 x/y
+    三角剖分，为 3 时使用 x/y/z 四面体剖分。未提供 ``data`` 时自动写入高程。
+    返回生成文件的绝对路径。
     """
 
     assert len(x) == len(y) and len(x) == len(z)
@@ -406,9 +356,7 @@ def pointsToVTKAsTIN(path, x, y, z, data=None, comments=None, ndim=2):
 
     npts = len(x)
 
-    points = np.zeros(
-        (npts, ndim)
-    )  # needs to create the 2D or 3D temporary array to call Delaunay
+    points = np.zeros((npts, ndim))  # Delaunay 所需的二维或三维临时坐标
     for i in range(npts):
         points[i, 0] = x[i]
         points[i, 1] = y[i]
@@ -417,24 +365,15 @@ def pointsToVTKAsTIN(path, x, y, z, data=None, comments=None, ndim=2):
 
     tri = Delaunay(points)
 
-    # list of triangles that form the tesselation
-    ncells, npoints_per_cell = tri.simplices.shape[0], tri.simplices.shape[1]
-    conn = np.zeros(ncells * 3)
-    for i in range(ncells):
-        ii = i * 3
-        conn[ii] = tri.simplices[i, 0]
-        conn[ii + 1] = tri.simplices[i, 1]
-        conn[ii + 2] = tri.simplices[i, 2]
-
-    offset = np.zeros(ncells)
-    for i in range(ncells):
-        offset[i] = (i + 1) * 3
-
-    cell_type = np.ones(ncells) * VtkTriangle.tid
+    ncells, npoints_per_cell = tri.simplices.shape
+    conn = tri.simplices.ravel()
+    offset = np.arange(1, ncells + 1) * npoints_per_cell
+    vtk_type = VtkTriangle.tid if ndim == 2 else VtkTetra.tid
+    cell_type = np.full(ncells, vtk_type, dtype="uint8")
 
     if not data:
         data = {"Elevation": z}
-    unstructuredGridToVTK(
+    return unstructuredGridToVTK(
         path,
         x,
         y,
@@ -444,30 +383,24 @@ def pointsToVTKAsTIN(path, x, y, z, data=None, comments=None, ndim=2):
         cell_types=cell_type,
         cellData=None,
         pointData=data,
-        comments=None,
+        comments=comments,
     )
 
 
 # ==============================================================================
-def linesToVTK(path, x, y, z, cellData=None, pointData=None, comments=None):
-    """
-    Export line segments that joint 2 points and associated data.
+def linesToVTK(
+    path: str,
+    x: NDArray,
+    y: NDArray,
+    z: NDArray,
+    cellData: _Data | None = None,
+    pointData: _Data | None = None,
+    comments: list[str] | None = None,
+) -> str:
+    """将两点一组的线段及关联数据写入 VTK 文件。
 
-    PARAMETERS:
-        path: name of the file without extension where data should be saved.
-        x, y, z: 1D list-type object (list, tuple or numpy) with coordinates of the vertex of the lines. It is assumed that each line.
-                 is defined by two points, then the lenght of the arrays should be equal to 2 * number of lines.
-        cellData: dictionary with variables associated to each line.
-              Keys should be the names of the variable stored in each array.
-              All 1D list-type object (list, tuple or numpy) must have the same number of elements.
-        pointData: dictionary with variables associated to each vertex.
-              Keys should be the names of the variable stored in each array.
-              All 1D list-type object (list, tuple or numpy) must have the same number of elements.
-        comments: list of comment strings, which will be added to the header section of the file.
-
-    RETURNS:
-        Full path to saved file.
-
+    ``x``、``y``、``z`` 必须是长度相同且元素数为偶数的一维数组。
+    ``cellData`` 和 ``pointData`` 分别提供线段和顶点数据。返回生成文件的绝对路径。
     """
     assert x.size == y.size == z.size
     assert x.size % 2 == 0
@@ -481,15 +414,11 @@ def linesToVTK(path, x, y, z, cellData=None, pointData=None, comments=None):
     npoints = len(x)
     ncells = int(len(x) / 2.0)
 
-    # Check cellData has the same size that the number of cells
-
-    # create some temporary arrays to write grid topology
+    # 构造网格拓扑数组
     offsets = np.arange(
         start=2, step=2, stop=npoints + 1, dtype="int32"
-    )  # index of last node in each cell
-    connectivity = np.arange(
-        npoints, dtype="int32"
-    )  # each point is only connected to itself
+    )  # 每个单元最后一个节点的偏移
+    connectivity = np.arange(npoints, dtype="int32")  # 每个点仅与自身连接
     cell_types = np.empty(npoints, dtype="uint8")
 
     cell_types[:] = VtkLine.tid
@@ -524,30 +453,20 @@ def linesToVTK(path, x, y, z, cellData=None, pointData=None, comments=None):
 
 # ==============================================================================
 def polyLinesToVTK(
-    path, x, y, z, pointsPerLine, cellData=None, pointData=None, comments=None
-):
-    """
-    Export line segments that joint 2 points and associated data.
+    path: str,
+    x: NDArray,
+    y: NDArray,
+    z: NDArray,
+    pointsPerLine: NDArray,
+    cellData: _Data | None = None,
+    pointData: _Data | None = None,
+    comments: list[str] | None = None,
+) -> str:
+    """将包含不同点数的折线及关联数据写入 VTK 文件。
 
-    PARAMETERS:
-        path: name of the file without extension where data should be saved.
-        x, y, z: 1D list-type object (list, tuple or numpy) arrays with coordinates of the vertices of the lines. It is assumed that each line.
-                 has diffent number of points.
-        pointsPerLine: 1D list-type object (list, tuple or numpy) array that defines the number of points associated to each line. Thus,
-                       the length of this array define the number of lines. It also implicitly
-                       defines the connectivity or topology of the set of lines. It is assumed
-                       that points that define a line are consecutive in the x, y and z arrays.
-        cellData: Dictionary with variables associated to each line.
-                  Keys should be the names of the variable stored in each array.
-                  All 1D list-type object (list, tuple or numpy) must have the same number of elements.
-        pointData: Dictionary with variables associated to each vertex.
-                   Keys should be the names of the variable stored in each array.
-                   1D list-type object (list, tuple or numpy) must have the same number of elements.
-        comments: list of comment strings, which will be added to the header section of the file.
-
-    RETURNS:
-        Full path to saved file.
-
+    ``x``、``y``、``z`` 保存连续排列的顶点坐标，``pointsPerLine`` 指定每条
+    折线的点数。``cellData`` 和 ``pointData`` 分别提供折线和顶点数据。
+    返回生成文件的绝对路径。
     """
     assert x.size == y.size == z.size
 
@@ -560,16 +479,14 @@ def polyLinesToVTK(
     npoints = len(x)
     ncells = pointsPerLine.size
 
-    # create some temporary arrays to write grid topology
-    offsets = np.zeros(ncells, dtype="int32")  # index of last node in each cell
+    # 构造网格拓扑数组
+    offsets = np.zeros(ncells, dtype="int32")  # 每个单元最后一个节点的偏移
     ii = 0
     for i in range(ncells):
         ii += pointsPerLine[i]
         offsets[i] = ii
 
-    connectivity = np.arange(
-        npoints, dtype="int32"
-    )  # each line connects points that are consecutive
+    connectivity = np.arange(npoints, dtype="int32")  # 每条折线连接连续排列的点
 
     cell_types = np.empty(npoints, dtype="uint8")
     cell_types[:] = VtkPolyLine.tid
@@ -604,43 +521,22 @@ def polyLinesToVTK(
 
 # ==============================================================================
 def unstructuredGridToVTK(
-    path,
-    x,
-    y,
-    z,
-    connectivity,
-    offsets,
-    cell_types,
-    cellData=None,
-    pointData=None,
-    comments=None,
-):
-    """
-    Export unstructured grid and associated data.
+    path: str,
+    x: NDArray,
+    y: NDArray,
+    z: NDArray,
+    connectivity: ArrayLike,
+    offsets: ArrayLike,
+    cell_types: ArrayLike,
+    cellData: _Data | None = None,
+    pointData: _Data | None = None,
+    comments: list[str] | None = None,
+) -> str:
+    """将非结构网格及关联数据写入 VTK 文件。
 
-    PARAMETERS:
-        path: name of the file without extension where data should be saved.
-        x, y, z: 1D list-type object (list, tuple or numpy) with coordinates of the vertices of cells. It is assumed that each element
-                 has diffent number of vertices.
-        connectivity: 1D list-type object (list, tuple or numpy) that defines the vertices associated to each element.
-                      Together with offset define the connectivity or topology of the grid.
-                      It is assumed that vertices in an element are listed consecutively.
-        offsets: 1D list-type object (list, tuple or numpy) with the index of the last vertex of each element in the connectivity array.
-                 It should have length nelem, where nelem is the number of cells or elements in the grid.
-        cell_types: 1D list-type object (list, tuple or numpy) with an integer that defines the cell type of each element in the grid.
-                    It should have size nelem. This should be assigned from evtk.vtk.VtkXXXX.tid, where XXXX represent
-                    the type of cell. Please check the VTK file format specification for allowed cell types.
-        cellData: Dictionary with variables associated to each line.
-                  Keys should be the names of the variable stored in each array.
-                  All 1D list-type object (list, tuple or numpy) must have the same number of elements.
-        pointData: Dictionary with variables associated to each vertex.
-                   Keys should be the names of the variable stored in each array.
-                   All 1D list-type object (list, tuple or numpy) must have the same number of elements.
-        comments: list of comment strings, which will be added to the header section of the file.
-
-    RETURNS:
-        Full path to saved file.
-
+    ``x``、``y``、``z`` 保存顶点坐标；``connectivity``、``offsets`` 和
+    ``cell_types`` 描述单元拓扑。``cellData`` 与 ``pointData`` 分别提供单元和
+    顶点数据。返回生成文件的绝对路径。
     """
     assert x.size == y.size == z.size
     x = __convertListToArray(x)
@@ -686,44 +582,27 @@ def unstructuredGridToVTK(
 
 # ==============================================================================
 def cylinderToVTK(
-    path,
-    x0,
-    y0,
-    z0,
-    z1,
-    radius,
-    nlayers,
-    npilars=16,
-    cellData=None,
-    pointData=None,
-    comments=None,
-):
-    """
-      Export cylinder as VTK unstructured grid.
+    path: str,
+    x0: float,
+    y0: float,
+    z0: float,
+    z1: float,
+    radius: float,
+    nlayers: int,
+    npilars: int = 16,
+    cellData: _Data | None = None,
+    pointData: _Data | None = None,
+    comments: list[str] | None = None,
+) -> str:
+    """将竖直圆柱侧面写入 VTK 非结构网格。
 
-    PARAMETERS:
-      path: path to file without extension.
-      x0, yo: center of cylinder.
-      z0, z1: lower and top elevation of the cylinder.
-      radius: radius of cylinder.
-      nlayers: Number of layers in z direction to divide the cylinder.
-      npilars: Number of points around the diameter of the cylinder.
-               Higher value gives higher resolution to represent the curved shape.
-      cellData: dictionary with 1D arrays that store cell data.
-                Arrays should have number of elements equal to ncells = npilars * nlayers.
-      pointData: dictionary with 1D arrays that store point data.
-                Arrays should have number of elements equal to npoints = npilars * (nlayers + 1).
-      comments: list of comment strings, which will be added to the header section of the file.
-
-    RETURNS:
-          Full path to saved file.
-
-      NOTE: This function only export vertical shapes for now. However, it should be easy to
-            rotate the cylinder to represent other orientations.
+    ``x0``、``y0`` 指定圆心，``z0``、``z1`` 指定高度范围，``radius`` 指定
+    半径。``nlayers`` 是竖直分层数，``npilars`` 是每层圆周点数。
+    返回生成文件的绝对路径。
     """
     import math as m
 
-    # Define x, y coordinates from polar coordinates.
+    # 根据极坐标计算 x、y 坐标
     dpi = 2.0 * m.pi / npilars
     angles = np.arange(0.0, 2.0 * m.pi, dpi)
 
@@ -748,19 +627,19 @@ def cylinderToVTK(
             zz[ii] = z[k]
             ii = ii + 1
 
-    # Define connectivity
+    # 构造连接关系
     conn = np.zeros(4 * ncells, dtype=np.int64)
     ii = 0
-    for l in range(nlayers):
+    for layer in range(nlayers):
         for p in range(npilars):
             p0 = p
             if p + 1 == npilars:
                 p1 = 0
             else:
-                p1 = p + 1  # circular loop
+                p1 = p + 1  # 闭合圆周
 
-            n0 = p0 + l * npilars
-            n1 = p1 + l * npilars
+            n0 = p0 + layer * npilars
+            n1 = p1 + layer * npilars
             n2 = n0 + npilars
             n3 = n1 + npilars
 
@@ -770,12 +649,12 @@ def cylinderToVTK(
             conn[ii + 3] = n2
             ii = ii + 4
 
-    # Define offsets
+    # 构造偏移
     offsets = np.zeros(ncells, dtype=np.int64)
     for i in range(ncells):
         offsets[i] = (i + 1) * 4
 
-    # Define cell types
+    # 构造单元类型
     ctype = np.ones(ncells) + VtkPixel.tid
 
     return unstructuredGridToVTK(

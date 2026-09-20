@@ -130,6 +130,14 @@ ENV/
 env.bak/
 venv.bak/
 
+# Project-local output and editor state
+*.db
+*.rar
+.run/
+logs/
+.idea/
+.vscode/
+
 # Spyder project settings
 .spyderproject
 .spyproject

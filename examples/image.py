@@ -2,7 +2,7 @@
 
 ######################################################################################
 # MIT License
-# 
+#
 # Copyright (c) 2010-2021 Paulo A. Herrera
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -14,7 +14,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,22 +27,22 @@
 # **************************************************************
 # * Example of how to use the high level imageToVTK function.  *
 # **************************************************************
-import os
-from evtk.hl import imageToVTK
+from pathlib import Path
+
 import numpy as np
 
-FILE_PATH = "./image"
-def clean():
-    try:
-        os.remove(FILE_PATH + ".vti")
-    except:
-        pass
-        
-def run():
-    print("Running image...")
+from funvtk.hl import imageToVTK
 
+FILE_PATH = "./image"
+
+
+def clean():
+    Path(FILE_PATH + ".vti").unlink(missing_ok=True)
+
+
+def run():
     # Grid dimensions
-    origin  = (0.0, 0.0 , 0.0)
+    origin = (0.0, 0.0, 0.0)
     spacing = (1.0, 1.0, 1.0)
 
     # Dimensions
@@ -51,12 +51,19 @@ def run():
     npoints = (nx + 1) * (ny + 1) * (nz + 1)
 
     # Variables
-    pressure = np.random.rand(ncells).reshape( (nx, ny, nz), order = 'C')
-    temp = np.random.rand(npoints).reshape( (nx + 1, ny + 1, nz + 1))
+    pressure = np.random.rand(ncells).reshape((nx, ny, nz), order="C")
+    temp = np.random.rand(npoints).reshape((nx + 1, ny + 1, nz + 1))
 
-    comments = [ "comment 1", "comment 2" ]
-    imageToVTK(FILE_PATH, origin, spacing, cellData = {"pressure" : pressure}, pointData = {"temp" : temp}, comments = comments )
+    comments = ["comment 1", "comment 2"]
+    imageToVTK(
+        FILE_PATH,
+        origin,
+        spacing,
+        cellData={"pressure": pressure},
+        pointData={"temp": temp},
+        comments=comments,
+    )
+
 
 if __name__ == "__main__":
     run()
-

@@ -1,22 +1,32 @@
 [build-system]
-requires = [ "poetry-core",]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
+[project]
 name = "funvtk"
 version = "1.0.10"
-description = ""
-authors = [ "farfun <1007530194@qq.com>",]
+description = "纯 Python VTK XML 文件导出库，支持结构化和非结构化网格、点集与折线"
 readme = "README.md"
-include = ["src/funvtk/py.typed"]
-[[tool.poetry.packages]]
-from = "src"
-include = "*"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "farfun", email = "1007530194@qq.com" }]
+dependencies = ["numpy>=1.23", "scipy>=1.9"]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-numpy = "*"
-scipy = "*"
+[project.urls]
+Homepage = "https://pypi.org/project/funvtk/"
+Organization = "https://github.com/farfarfun"
+Repository = "https://github.com/farfarfun/funvtk"
+Releases = "https://github.com/farfarfun/funvtk/releases"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "*"
+[dependency-groups]
+dev = ["pytest>=7.0.0", "ruff>=0.9.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/funvtk"]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]

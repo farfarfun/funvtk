@@ -4,23 +4,20 @@
 # * Example of how to use the high level gridToVTK function.   *
 # * This example shows how to export a rectilinear grid.       *
 # **************************************************************
-import os
-from evtk.hl import rectilinearToVTK
+from pathlib import Path
+
 import numpy as np
+
+from funvtk.hl import rectilinearToVTK
 
 FILE_PATH = "./rectilinear"
 
 
 def clean():
-    try:
-        os.remove(FILE_PATH + ".vtr")
-    except:
-        pass
+    Path(FILE_PATH + ".vtr").unlink(missing_ok=True)
 
 
 def run():
-    print("Running rectilinear...")
-
     # Dimensions
     nx, ny, nz = 6, 6, 2
     lx, ly, lz = 1.0, 1.0, 1.0

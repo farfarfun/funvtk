@@ -1,27 +1,33 @@
 # **************************************
-# *  Low level Python library to       *
-# *  export data to binary VTK file.   *
+# *  将数据导出为二进制 VTK 文件的    *
+# *  低层 Python 库。                  *
 # **************************************
 
-from .evtk import writeBlockSize, writeArrayToFile, writeArraysToFile
-from .xml import XmlWriter
-import sys
 import os
+import sys
+from collections.abc import Iterable, Sequence
+from typing import Any
+
+from .evtk import writeArraysToFile, writeArrayToFile, writeBlockSize
+from .xml import XmlWriter
 
 # ================================
-#            VTK Types
+#            VTK 类型
 # ================================
 
 
-#     FILE TYPES
+#     文件类型
 class VtkFileType:
+    """描述一种 VTK 文件格式及其扩展名。"""
 
-    def __init__(self, name, ext):
+    def __init__(self, name: str, ext: str) -> None:
+        """创建文件类型描述。"""
         self.name = name
         self.ext = ext
 
-    def __str__(self):
-        return "Name: %s  Ext: %s \n" % (self.name, self.ext)
+    def __str__(self) -> str:
+        """返回便于阅读的类型描述。"""
+        return f"Name: {self.name}  Ext: {self.ext} \n"
 
 
 VtkImageData = VtkFileType("ImageData", ".vti")
@@ -31,15 +37,18 @@ VtkStructuredGrid = VtkFileType("StructuredGrid", ".vts")
 VtkUnstructuredGrid = VtkFileType("UnstructuredGrid", ".vtu")
 
 
-#    DATA TYPES
+#    数据类型
 class VtkDataType:
+    """描述一种 VTK 标量数据类型。"""
 
-    def __init__(self, size, name):
+    def __init__(self, size: int, name: str) -> None:
+        """创建数据类型描述。"""
         self.size = size
         self.name = name
 
-    def __str__(self):
-        return "Type: %s  Size: %d \n" % (self.name, self.size)
+    def __str__(self) -> str:
+        """返回便于阅读的类型描述。"""
+        return f"Type: {self.name}  Size: {self.size} \n"
 
 
 VtkInt8 = VtkDataType(1, "Int8")
@@ -53,7 +62,7 @@ VtkUInt64 = VtkDataType(8, "UInt64")
 VtkFloat32 = VtkDataType(4, "Float32")
 VtkFloat64 = VtkDataType(8, "Float64")
 
-# Map numpy to VTK data types
+# NumPy 到 VTK 数据类型的映射
 np_to_vtk = {
     "int8": VtkInt8,
     "uint8": VtkUInt8,
@@ -68,15 +77,18 @@ np_to_vtk = {
 }
 
 
-#    CELL TYPES
+#    单元类型
 class VtkCellType:
+    """描述一种 VTK 单元类型。"""
 
-    def __init__(self, tid, name):
+    def __init__(self, tid: int, name: str) -> None:
+        """创建单元类型描述。"""
         self.tid = tid
         self.name = name
 
-    def __str__(self):
-        return "VtkCellType( %s ) \n" % (self.name)
+    def __str__(self) -> str:
+        """返回便于阅读的类型描述。"""
+        return f"VtkCellType( {self.name} ) \n"
 
 
 VtkVertex = VtkCellType(1, "Vertex")
@@ -101,27 +113,20 @@ VtkQuadraticHexahedron = VtkCellType(25, "Quadratic_Hexahedron")
 
 
 # ==============================
-#       Helper functions
+#       辅助函数
 # ==============================
-def _mix_extents(start, end):
+def _mix_extents(start: Sequence[int], end: Sequence[int]) -> str:
     assert len(start) == len(end) == 3
-    string = "%d %d %d %d %d %d" % (
-        start[0],
-        end[0],
-        start[1],
-        end[1],
-        start[2],
-        end[2],
-    )
+    string = f"{start[0]} {end[0]} {start[1]} {end[1]} {start[2]} {end[2]}"
     return string
 
 
-def _array_to_string(a):
+def _array_to_string(a: Iterable[object]) -> str:
     s = "".join([repr(num) + " " for num in a])
     return s
 
 
-def _get_byte_order():
+def _get_byte_order() -> str:
     if sys.byteorder == "little":
         return "LittleEndian"
     else:
@@ -129,16 +134,13 @@ def _get_byte_order():
 
 
 # ================================
-#        VtkGroup class
+#        VtkGroup 类
 # ================================
 class VtkGroup:
+    """生成用于组织多个 VTK 数据文件的 PVD 集合文件。"""
 
-    def __init__(self, filepath):
-        """Creates a VtkGroup file that is stored in filepath.
-
-        PARAMETERS:
-            filepath: filename without extension.
-        """
+    def __init__(self, filepath: str) -> None:
+        """创建集合文件，``filepath`` 不包含扩展名。"""
         self.xml = XmlWriter(filepath + ".pvd")
         self.xml.openElement("VTKFile")
         self.xml.addAttributes(
@@ -147,24 +149,20 @@ class VtkGroup:
         self.xml.openElement("Collection")
         self.root = os.path.dirname(filepath)
 
-    def save(self):
-        """Closes this VtkGroup."""
+    def save(self) -> None:
+        """结束集合并关闭文件。"""
         self.xml.closeElement("Collection")
         self.xml.closeElement("VTKFile")
         self.xml.close()
 
-    def addFile(self, filepath, sim_time, group="", part="0"):
-        """Adds file to this VTK group.
-
-        PARAMETERS:
-            filepath: full path to VTK file.
-            sim_time: simulated time.
-            group: This attribute is not required; it is only for informational purposes.
-            part: It is an integer value greater than or equal to 0.
-
-        See: http://www.paraview.org/Wiki/ParaView/Data_formats#PVD_File_Format for details.
-        """
-        # TODO: Check what the other attributes are for.
+    def addFile(
+        self,
+        filepath: str,
+        sim_time: int | float,
+        group: str = "",
+        part: str | int = "0",
+    ) -> None:
+        """将 VTK 文件及其模拟时间加入集合。"""
         filename = os.path.relpath(filepath, start=self.root)
         self.xml.openElement("DataSet")
         self.xml.addAttributes(timestep=sim_time, group=group, part=part, file=filename)
@@ -172,30 +170,20 @@ class VtkGroup:
 
 
 # ================================
-#        VtkFile class
+#        VtkFile 类
 # ================================
 class VtkFile:
+    """以 VTK XML 格式写入网格和二进制数组。"""
 
-    def __init__(self, filepath, ftype, largeFile=False):
-        """
-        PARAMETERS:
-            filepath: filename without extension.
-            ftype: file type, e.g. VtkImageData, etc.
-            largeFile: If size of the stored data cannot be represented by a UInt32.
-        """
+    def __init__(
+        self, filepath: str, ftype: VtkFileType, largeFile: bool = False
+    ) -> None:
+        """创建 VTK 文件，``filepath`` 不包含扩展名。"""
         self.ftype = ftype
         self.filename = filepath + ftype.ext
         self.xml = XmlWriter(self.filename)
-        self.offset = 0  # offset in bytes after beginning of binary section
+        self.offset = 0  # 二进制段起点后的字节偏移量
         self.appendedDataIsOpen = False
-        #        self.largeFile = largeFile
-
-        #       if largeFile == False:
-        #            self.xml.openElement("VTKFile").addAttributes(type = ftype.name,
-        #                                                          version = "0.1",
-        #                                                          byte_order = _get_byte_order())
-        #        else:
-        #           print "WARNING: output file only compatible with VTK 6.0 and later."
         self.xml.openElement("VTKFile").addAttributes(
             type=ftype.name,
             version="1.0",
@@ -203,54 +191,28 @@ class VtkFile:
             header_type="UInt64",
         )
 
-    def addComments(self, comments):
-        """Insert strings stored in comments list as comments into the xml header section of the file.
-        This method does not make any check for forbidden or special characters in XML comments.
-        This method should be called right after creating the file to avoid including comments in the
-        wrong place within the header. BE AWARE!!!
-        """
+    def addComments(self, comments: Iterable[str]) -> None:
+        """将字符串序列写入 XML 头部作为注释。"""
         assert not self.appendedDataIsOpen
         for c in comments:
             self.xml.addComment(c)
 
-    def getFileName(self):
-        """Returns absolute path to this file."""
+    def getFileName(self) -> str:
+        """返回输出文件的绝对路径。"""
         return os.path.abspath(self.filename)
 
     def openPiece(
         self,
-        start=None,
-        end=None,
-        npoints=None,
-        ncells=None,
-        nverts=None,
-        nlines=None,
-        nstrips=None,
-        npolys=None,
-    ):
-        """Open piece section.
-
-        PARAMETERS:
-            Next two parameters must be given together.
-            start: array or list with start indexes in each direction.
-            end:   array or list with end indexes in each direction.
-
-            npoints: number of points in piece (int).
-            ncells: number of cells in piece (int). If present,
-                    npoints must also be given.
-
-            All the following parameters must be given together with npoints.
-            They should all be integer values.
-            nverts: number of vertices.
-            nlines: number of lines.
-            nstrips: number of strips.
-            npolys: number of .
-
-        RETURNS:
-            this VtkFile to allow chained calls.
-        """
-        # TODO: Check what are the requirements for each type of grid.
-
+        start: Sequence[int] | None = None,
+        end: Sequence[int] | None = None,
+        npoints: int | str | None = None,
+        ncells: int | str | None = None,
+        nverts: int | str | None = None,
+        nlines: int | str | None = None,
+        nstrips: int | str | None = None,
+        npolys: int | str | None = None,
+    ) -> "VtkFile":
+        """打开网格分块并写入范围或元素数量，返回自身以支持链式调用。"""
         self.xml.openElement("Piece")
         if start and end:
             ext = _mix_extents(start, end)
@@ -282,31 +244,20 @@ class VtkFile:
 
         return self
 
-    def closePiece(self):
+    def closePiece(self) -> None:
+        """关闭当前网格分块。"""
         self.xml.closeElement("Piece")
 
     def openData(
         self,
-        nodeType,
-        scalars=None,
-        vectors=None,
-        normals=None,
-        tensors=None,
-        tcoords=None,
-    ):
-        """Open data section.
-
-        PARAMETERS:
-            nodeType: Point or Cell.
-            scalars: default data array name for scalar data.
-            vectors: default data array name for vector data.
-            normals: default data array name for normals data.
-            tensors: default data array name for tensors data.
-            tcoords: dafault data array name for tcoords data.
-
-        RETURNS:
-            this VtkFile to allow chained calls.
-        """
+        nodeType: str,
+        scalars: str | None = None,
+        vectors: str | None = None,
+        normals: str | None = None,
+        tensors: str | None = None,
+        tcoords: str | None = None,
+    ) -> "VtkFile":
+        """打开点数据或单元数据段，返回自身以支持链式调用。"""
         self.xml.openElement(nodeType + "Data")
         if scalars:
             self.xml.addAttributes(scalars=scalars)
@@ -321,29 +272,18 @@ class VtkFile:
 
         return self
 
-    def closeData(self, nodeType):
-        """Close data section.
-
-        PARAMETERS:
-            nodeType: Point or Cell.
-
-        RETURNS:
-            this VtkFile to allow chained calls.
-        """
+    def closeData(self, nodeType: str) -> None:
+        """关闭指定的点数据或单元数据段。"""
         self.xml.closeElement(nodeType + "Data")
 
-    def openGrid(self, start=None, end=None, origin=None, spacing=None):
-        """Open grid section.
-
-        PARAMETERS:
-            start: array or list of start indexes. Required for Structured, Rectilinear and ImageData grids.
-            end: array or list of end indexes. Required for Structured, Rectilinear and ImageData grids.
-            origin: 3D array or list with grid origin. Only required for ImageData grids.
-            spacing: 3D array or list with grid spacing. Only required for ImageData grids.
-
-        RETURNS:
-            this VtkFile to allow chained calls.
-        """
+    def openGrid(
+        self,
+        start: Sequence[int] | None = None,
+        end: Sequence[int] | None = None,
+        origin: Sequence[int | float] | None = None,
+        spacing: Sequence[int | float] | None = None,
+    ) -> "VtkFile":
+        """打开网格段并写入范围、原点和间距，返回自身。"""
         gType = self.ftype.name
         self.xml.openElement(gType)
         if gType == VtkImageData.name:
@@ -364,30 +304,12 @@ class VtkFile:
 
         return self
 
-    def closeGrid(self):
-        """Closes grid element.
-
-        RETURNS:
-            this VtkFile to allow chained calls.
-        """
+    def closeGrid(self) -> None:
+        """关闭当前网格段。"""
         self.xml.closeElement(self.ftype.name)
 
-    def addHeader(self, name, dtype, nelem, ncomp):
-        """Adds data array description to xml header section.
-
-        PARAMETERS:
-            name: data array name.
-            dtype: string describing type of the data.
-                   Format is the same as used by numpy, e.g. 'float64'.
-            nelem: number of elements in the array.
-            ncomp: number of components, 1 (=scalar) and 3 (=vector).
-
-        RETURNS:
-            This VtkFile to allow chained calls.
-
-        NOTE: This is a low level function. Use addData if you want
-              to add a numpy array.
-        """
+    def addHeader(self, name: str, dtype: str, nelem: int, ncomp: int) -> "VtkFile":
+        """向 XML 头部加入数组描述，返回自身以支持链式调用。"""
         dtype = np_to_vtk[dtype]
 
         self.xml.openElement("DataArray")
@@ -400,23 +322,12 @@ class VtkFile:
         )
         self.xml.closeElement()
 
-        # TODO: Check if 4/8 is platform independent
-        # if self.largeFile == False:
-        #    self.offset += nelem * ncomp * dtype.size + 4 # add 4 to indicate array size
-        # else:
-        self.offset += nelem * ncomp * dtype.size + 8  # add 8 to indicate array size
+        self.offset += nelem * ncomp * dtype.size + 8
         return self
 
-    def addData(self, name, data):
-        """Adds array description to xml header section.
-
-        PARAMETERS:
-           name: data array name.
-           data: one numpy array or a tuple with 3 numpy arrays. If a tuple, the individual
-                 arrays must represent the components of a vector field.
-                 All arrays must be one dimensional or three-dimensional.
-        """
-        if type(data).__name__ == "tuple":  # vector data
+    def addData(self, name: str, data: Any) -> None:
+        """根据 NumPy 数组或三分量数组向 XML 头部加入描述。"""
+        if type(data).__name__ == "tuple":  # 向量数据
             assert len(data) == 3
             x = data[0]
             self.addHeader(name, x.dtype.name, x.size, 3)
@@ -428,64 +339,35 @@ class VtkFile:
         else:
             assert False, "Argument must be a Numpy array"
 
-    def appendHeader(self, dtype, nelem, ncomp):
-        """This function only writes the size of the data block that will be appended.
-        The data itself must be written immediately after calling this function.
-
-        PARAMETERS:
-            dtype: string with data type representation (same as numpy). For example, 'float64'
-            nelem: number of elements.
-            ncomp: number of components, 1 (=scalar) or 3 (=vector).
-        """
+    def appendHeader(self, dtype: str, nelem: int, ncomp: int) -> None:
+        """写入待追加数据块的大小；调用后应立即写入数据。"""
         self.openAppendedData()
         dsize = np_to_vtk[dtype].size
         block_size = dsize * ncomp * nelem
-        if self.largeFile == False:
-            writeBlockSize(self.xml.stream, block_size)
-        else:
-            writeBlockSize64Bit(self.xml.stream, block_size)
+        writeBlockSize(self.xml.stream, block_size)
 
-    def appendData(self, data):
-        """Append data to binary section.
-        This function writes the header section and the data to the binary file.
-
-        PARAMETERS:
-            data: one numpy array or a tuple with 3 numpy arrays. If a tuple, the individual
-                  arrays must represent the components of a vector field.
-                  All arrays must be one dimensional or three-dimensional.
-                  The order of the arrays must coincide with the numbering scheme of the grid.
-
-        RETURNS:
-            This VtkFile to allow chained calls
-
-        TODO: Extend this function to accept contiguous C order arrays.
-        """
+    def appendData(self, data: Any) -> "VtkFile":
+        """向二进制段追加数组数据，返回自身以支持链式调用。"""
         self.openAppendedData()
 
-        if type(data).__name__ == "tuple":  # 3 numpy arrays
+        if type(data).__name__ == "tuple":  # 三个 NumPy 数组
             ncomp = len(data)
             assert ncomp == 3
             dsize = data[0].dtype.itemsize
             nelem = data[0].size
             block_size = ncomp * nelem * dsize
-            # if self.largeFile == False:
             writeBlockSize(self.xml.stream, block_size)
-            # else:
-            #    writeBlockSize64Bit(self.xml.stream, block_size)
             x, y, z = data[0], data[1], data[2]
             writeArraysToFile(self.xml.stream, x, y, z)
 
         elif type(data).__name__ == "ndarray" and (
             data.ndim == 1 or data.ndim == 3
-        ):  # single numpy array
+        ):  # 单个 NumPy 数组
             ncomp = 1
             dsize = data.dtype.itemsize
             nelem = data.size
             block_size = ncomp * nelem * dsize
-            # if self.largeFile == False:
             writeBlockSize(self.xml.stream, block_size)
-            # else:
-            #    writeBlockSize64Bit(self.xml.stream, block_size)
             writeArrayToFile(self.xml.stream, data)
 
         else:
@@ -493,33 +375,28 @@ class VtkFile:
 
         return self
 
-    def openAppendedData(self):
-        """Opens binary section.
-
-        It is not necessary to explicitly call this function from an external library.
-        """
+    def openAppendedData(self) -> None:
+        """打开二进制追加数据段。"""
         if not self.appendedDataIsOpen:
             self.xml.openElement("AppendedData").addAttributes(encoding="raw").addText(
                 "_"
             )
             self.appendedDataIsOpen = True
 
-    def closeAppendedData(self):
-        """Closes binary section.
-
-        It is not necessary to explicitly call this function from an external library.
-        """
+    def closeAppendedData(self) -> None:
+        """关闭二进制追加数据段。"""
         self.xml.closeElement("AppendedData")
 
-    def openElement(self, tagName):
-        """Useful to add elements such as: Coordinates, Points, Verts, etc."""
+    def openElement(self, tagName: str) -> None:
+        """打开 Coordinates、Points 或 Verts 等 XML 元素。"""
         self.xml.openElement(tagName)
 
-    def closeElement(self, tagName):
+    def closeElement(self, tagName: str) -> None:
+        """关闭指定 XML 元素。"""
         self.xml.closeElement(tagName)
 
-    def save(self):
-        """Closes file"""
+    def save(self) -> None:
+        """结束文档并关闭文件。"""
         if self.appendedDataIsOpen:
             self.xml.closeElement("AppendedData")
         self.xml.closeElement("VTKFile")

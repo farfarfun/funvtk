@@ -2,7 +2,7 @@
 
 ######################################################################################
 # MIT License
-# 
+#
 # Copyright (c) 2010-2021 Paulo A. Herrera
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -14,7 +14,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,17 +27,19 @@
 # **************************************************************
 # * Example of how to use the high level pointsToVTK function. *
 # **************************************************************
-import os
-from evtk.hl import polyLinesToVTK
+from pathlib import Path
+
 import numpy as np
 
+from funvtk.hl import polyLinesToVTK
+
 FILE_PATH = "poly_lines"
+
+
 def clean():
-    try:
-        os.remove(FILE_PATH + ".vtu")
-    except:
-        pass
-        
+    Path(FILE_PATH + ".vtu").unlink(missing_ok=True)
+
+
 def run():
     # Positions of points that define lines
     npoints = 7
@@ -68,7 +70,16 @@ def run():
     vel[0:3] = 1.0
     vel[4:6] = 5.0
 
-    polyLinesToVTK(FILE_PATH, x, y, z, pointsPerLine = pointsPerLine, cellData = {"vel" : vel}, pointData = {"temp" : temp, "pressure" : pressure})
+    polyLinesToVTK(
+        FILE_PATH,
+        x,
+        y,
+        z,
+        pointsPerLine=pointsPerLine,
+        cellData={"vel": vel},
+        pointData={"temp": temp, "pressure": pressure},
+    )
+
 
 if __name__ == "__main__":
     run()

@@ -2,7 +2,7 @@
 
 ######################################################################################
 # MIT License
-# 
+#
 # Copyright (c) 2010-2021 Paulo A. Herrera
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -14,7 +14,7 @@
 #
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,19 +27,20 @@
 # **************************************************************
 # * Example of how to use the high level pointsToVTK function. *
 # **************************************************************
-import os
-from evtk.hl import linesToVTK
+from pathlib import Path
+
 import numpy as np
 
+from funvtk.hl import linesToVTK
+
 FILE_PATH = "./lines"
+
+
 def clean():
-    try:
-        os.remove(FILE_PATH + ".vtu")
-    except:
-        pass
-        
+    Path(FILE_PATH + ".vtu").unlink(missing_ok=True)
+
+
 def run():
-    print("Running lines...")
     npoints = 4
     x = np.zeros(npoints)
     y = np.zeros(npoints)
@@ -55,9 +56,17 @@ def run():
     x[2], y[2], z[2] = 0.0, 0.0, 0.0
     x[3], y[3], z[3] = -1.0, 1.0, 1.0
 
-    comments = [ "comment 1", "comment 2" ]
-    linesToVTK(FILE_PATH, x, y, z, cellData = {"vel" : vel}, pointData = {"temp" : temp, "pressure" : pressure}, comments = comments)
+    comments = ["comment 1", "comment 2"]
+    linesToVTK(
+        FILE_PATH,
+        x,
+        y,
+        z,
+        cellData={"vel": vel},
+        pointData={"temp": temp, "pressure": pressure},
+        comments=comments,
+    )
+
 
 if __name__ == "__main__":
     run()
-

@@ -15,7 +15,6 @@ import os
 import numpy as np
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Import smoke tests
 # ---------------------------------------------------------------------------
@@ -47,15 +46,10 @@ def test_import_submodules(submodule):
     assert mod is not None
 
 
-def test_version_submodule_has_syntax_error():
-    """funvtk.version.py contains a syntax error (`_MAJOR = 2_MINOR = 0`),
-    which is an invalid decimal literal in Python. It is not imported by
-    funvtk/__init__.py so it does not break normal usage of the package,
-    but importing it directly fails. This is a pre-existing bug in the
-    repository, tracked here rather than silently worked around.
-    """
-    with pytest.raises(SyntaxError):
-        import funvtk.version  # noqa: F401
+def test_import_version_submodule():
+    from funvtk.version import PYEVTK_VERSION
+
+    assert PYEVTK_VERSION == "2.0.0"
 
 
 # ---------------------------------------------------------------------------
@@ -81,29 +75,33 @@ def test_points_to_vtk_writes_file(tmp_path):
 
 
 def test_points_to_vtk_as_tin_writes_file(tmp_path):
-    """Exercises the scipy.spatial.Delaunay dependency.
-
-    NOTE: pointsToVTKAsTIN() has a pre-existing bug -- it forwards to
-    unstructuredGridToVTK() but never returns its result, so it always
-    returns None instead of the file path the docstring promises. This is
-    a real business-logic bug in the repository; it is not fixed here.
-    We verify success by checking the well-known output path directly
-    instead of relying on the (always-None) return value.
-    """
+    """Exercises the scipy.spatial.Delaunay dependency."""
     from funvtk import pointsToVTKAsTIN
 
-    npoints = 20
-    x = np.random.rand(npoints)
-    y = np.random.rand(npoints)
-    z = np.random.rand(npoints)
+    x = np.array([0.0, 1.0, 1.0, 0.0, 0.5])
+    y = np.array([0.0, 0.0, 1.0, 1.0, 0.5])
+    z = np.arange(5, dtype="float64")
 
     out_path = str(tmp_path / "tin")
     result = pointsToVTKAsTIN(out_path, x, y, z, ndim=2)
 
-    assert result is None  # documents the current (buggy) behavior
-    expected_file = out_path + ".vtu"
-    assert os.path.isfile(expected_file)
-    assert os.path.getsize(expected_file) > 0
+    assert result == out_path + ".vtu"
+    assert os.path.isfile(result)
+    assert os.path.getsize(result) > 0
+
+
+def test_points_to_vtk_as_3d_tin_writes_file(tmp_path):
+    from funvtk import pointsToVTKAsTIN
+
+    x = np.array([0.0, 1.0, 0.0, 0.0, 1.0])
+    y = np.array([0.0, 0.0, 1.0, 0.0, 1.0])
+    z = np.array([0.0, 0.0, 0.0, 1.0, 1.0])
+
+    out_path = str(tmp_path / "tin_3d")
+    result = pointsToVTKAsTIN(out_path, x, y, z, ndim=3)
+
+    assert result == out_path + ".vtu"
+    assert os.path.getsize(result) > 0
 
 
 def test_grid_to_vtk_structured_writes_file(tmp_path):
@@ -127,27 +125,20 @@ def test_grid_to_vtk_structured_writes_file(tmp_path):
     assert os.path.getsize(result) > 0
 
 
-def test_grid_to_vtk_rectilinear_branch_is_broken(tmp_path):
-    """gridToVTK() with 1D coordinate arrays takes the "rectilinear"
-    branch, which has a pre-existing indentation bug in hl.py: the calls to
-    _addDataToFile(), w.closePiece() and w.closeGrid() are nested inside the
-    `else` (structured) branch of the `if isRect / else` block, so they are
-    silently skipped for rectilinear grids. This leaves the XML writer's
-    element stack unbalanced and closeElement() raises AssertionError.
-
-    This is a real business-logic bug in the repository (not fixed here);
-    this test documents and locks in the current failure mode rather than
-    silently skipping it.
-    """
+def test_grid_to_vtk_rectilinear_writes_file(tmp_path):
     from funvtk import gridToVTK
 
     x = np.arange(0, 5, dtype="float64")
     y = np.arange(0, 4, dtype="float64")
     z = np.arange(0, 3, dtype="float64")
+    point_data = {"value": np.zeros((x.size, y.size, z.size))}
 
     out_path = str(tmp_path / "grid_rect")
-    with pytest.raises(AssertionError):
-        gridToVTK(out_path, x, y, z)
+    result = gridToVTK(out_path, x, y, z, pointData=point_data)
+
+    assert result == out_path + ".vtr"
+    assert os.path.isfile(result)
+    assert os.path.getsize(result) > 0
 
 
 def test_poly_lines_to_vtk_writes_file(tmp_path):
@@ -188,7 +179,9 @@ def test_lines_to_vtk_writes_file(tmp_path):
     temp = np.random.rand(npoints)
 
     out_path = str(tmp_path / "lines")
-    result = linesToVTK(out_path, x, y, z, cellData={"vel": vel}, pointData={"temp": temp})
+    result = linesToVTK(
+        out_path, x, y, z, cellData={"vel": vel}, pointData={"temp": temp}
+    )
 
     assert os.path.isfile(result)
     assert os.path.getsize(result) > 0
@@ -204,7 +197,9 @@ def test_vtk_file_and_group_low_level(tmp_path):
 
     path = str(tmp_path / "lowlevel")
     w = VtkFile(path, VtkImageData)
-    w.openGrid(start=(0, 0, 0), end=(0, 0, 0), origin=(0.0, 0.0, 0.0), spacing=(1.0, 1.0, 1.0))
+    w.openGrid(
+        start=(0, 0, 0), end=(0, 0, 0), origin=(0.0, 0.0, 0.0), spacing=(1.0, 1.0, 1.0)
+    )
     w.openPiece(start=(0, 0, 0), end=(0, 0, 0))
     w.closePiece()
     w.closeGrid()

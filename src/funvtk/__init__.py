@@ -1,3 +1,3 @@
-from .hl import pointsToVTK, pointsToVTKAsTIN, polyLinesToVTK, gridToVTK
+from .hl import gridToVTK, pointsToVTK, pointsToVTKAsTIN, polyLinesToVTK
 
 __all__ = ["pointsToVTK", "pointsToVTKAsTIN", "polyLinesToVTK", "gridToVTK"]

@@ -1,9 +1,11 @@
-﻿import struct
+import struct
 import sys
+from typing import BinaryIO
+
 import numpy as np
+from numpy.typing import NDArray
 
-
-# Map numpy dtype to struct format
+# NumPy 数据类型到 struct 格式字符的映射
 np_to_struct = {
     "int8": "b",
     "uint8": "B",
@@ -18,8 +20,8 @@ np_to_struct = {
 }
 
 
-def _get_byte_order_char():
-    # Check format in https://docs.python.org/3.5/library/struct.html
+def _get_byte_order_char() -> str:
+    # 格式说明见 https://docs.python.org/3/library/struct.html
     if sys.byteorder == "little":
         return "<"
     else:
@@ -27,60 +29,42 @@ def _get_byte_order_char():
 
 
 # ================================
-#        Python interface
+#        Python 接口
 # ================================
-def writeBlockSize(stream, block_size):
-    fmt = (
-        _get_byte_order_char() + "Q"
-    )  # Write size as unsigned long long == 64 bits unsigned integer
+def writeBlockSize(stream: BinaryIO, block_size: int) -> None:
+    """将数据块大小写为 64 位无符号整数。"""
+    fmt = _get_byte_order_char() + "Q"
     stream.write(struct.pack(fmt, block_size))
 
 
-def writeArrayToFile(stream, data):
-    # stream.flush() # this should not be necessary
+def writeArrayToFile(stream: BinaryIO, data: NDArray) -> None:
+    """按 VTK 所需的 Fortran 顺序写入一个 NumPy 数组。"""
     assert data.ndim == 1 or data.ndim == 3
-    fmt = (
-        _get_byte_order_char() + str(data.size) + np_to_struct[data.dtype.name]
-    )  # > for big endian
+    fmt = _get_byte_order_char() + str(data.size) + np_to_struct[data.dtype.name]
 
-    # Check if array is contiguous
-    # assert data.flags["C_CONTIGUOUS"] or data.flags["F_CONTIGUOUS"]
-
-    # NOTE: VTK expects data in FORTRAN order
-    # This is only needed when a multidimensional array has C-layout
+    # VTK 要求 Fortran 顺序，多维 C 布局数组需要在此展开。
     dd = np.ravel(data, order="F")
 
-    bin = struct.pack(fmt, *dd)
-    stream.write(bin)
+    binary = struct.pack(fmt, *dd)
+    stream.write(binary)
 
 
 # ==============================================================================
-def writeArraysToFile(stream, x, y, z):
-    # Check if arrays have same shape and data type
+def writeArraysToFile(stream: BinaryIO, x: NDArray, y: NDArray, z: NDArray) -> None:
+    """交错写入三个形状和数据类型一致的 NumPy 数组。"""
     assert x.size == y.size == z.size, "Different array sizes."
-    assert (
-        x.dtype.itemsize == y.dtype.itemsize == z.dtype.itemsize
-    ), "Different item sizes."
+    assert x.dtype.itemsize == y.dtype.itemsize == z.dtype.itemsize, (
+        "Different item sizes."
+    )
 
     nitems = x.size
-    itemsize = x.dtype.itemsize
+    fmt = _get_byte_order_char() + "1" + np_to_struct[x.dtype.name]
 
-    fmt = (
-        _get_byte_order_char() + str(1) + np_to_struct[x.dtype.name]
-    )  # > for big endian
-
-    # Check if arrays are contiguous
-    # assert x.flags["C_CONTIGUOUS"] or x.flags["F_CONTIGUOUS"]
-    # assert y.flags["C_CONTIGUOUS"] or y.flags["F_CONTIGUOUS"]
-    # assert z.flags["C_CONTIGUOUS"] or z.flags["F_CONTIGUOUS"]
-
-    # NOTE: VTK expects data in FORTRAN order
-    # This is only needed when a multidimensional array has C-layout
+    # VTK 要求 Fortran 顺序，多维 C 布局数组需要在此展开。
     xx = np.ravel(x, order="F")
     yy = np.ravel(y, order="F")
     zz = np.ravel(z, order="F")
 
-    # eliminate this loop by creating a composed array.
     for i in range(nitems):
         bx = struct.pack(fmt, xx[i])
         by = struct.pack(fmt, yy[i])

@@ -1,3 +1,4 @@
-_MAJOR = 2_MINOR = 0
+_MAJOR = 2
+_MINOR = 0
 _REV = 0
-PYEVTK_VERSION = "%d.%d.%d" % (_MAJOR, _MINOR, _REV)
+PYEVTK_VERSION = f"{_MAJOR}.{_MINOR}.{_REV}"

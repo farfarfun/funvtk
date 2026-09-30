@@ -25,13 +25,13 @@
 ######################################################################################
 
 # **************************************************************
-# * Example of how to use the high level imageToVTK function.  *
+# * 高层 image_to_vtk 函数示例。                              *
 # **************************************************************
 from pathlib import Path
 
 import numpy as np
 
-from funvtk.hl import imageToVTK
+from funvtk.hl import image_to_vtk
 
 FILE_PATH = "./image"
 
@@ -41,26 +41,26 @@ def clean():
 
 
 def run():
-    # Grid dimensions
+    # 网格尺寸
     origin = (0.0, 0.0, 0.0)
     spacing = (1.0, 1.0, 1.0)
 
-    # Dimensions
+    # 数据尺寸
     nx, ny, nz = 6, 6, 2
     ncells = nx * ny * nz
     npoints = (nx + 1) * (ny + 1) * (nz + 1)
 
-    # Variables
+    # 数据变量
     pressure = np.random.rand(ncells).reshape((nx, ny, nz), order="C")
     temp = np.random.rand(npoints).reshape((nx + 1, ny + 1, nz + 1))
 
     comments = ["comment 1", "comment 2"]
-    imageToVTK(
+    image_to_vtk(
         FILE_PATH,
         origin,
         spacing,
-        cellData={"pressure": pressure},
-        pointData={"temp": temp},
+        cell_data={"pressure": pressure},
+        point_data={"temp": temp},
         comments=comments,
     )
 

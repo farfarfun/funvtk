@@ -1,14 +1,14 @@
 #! /usr/bin/env python
 
 # **************************************************************
-# * Example of how to use the high level gridToVTK function.   *
+# * 高层 rectilinear_to_vtk 函数示例。                         *
 # * This example shows how to export a rectilinear grid.       *
 # **************************************************************
 from pathlib import Path
 
 import numpy as np
 
-from funvtk.hl import rectilinearToVTK
+from funvtk.hl import rectilinear_to_vtk
 
 FILE_PATH = "./rectilinear"
 
@@ -18,7 +18,7 @@ def clean():
 
 
 def run():
-    # Dimensions
+    # 数据尺寸
     nx, ny, nz = 6, 6, 2
     lx, ly, lz = 1.0, 1.0, 1.0
     dx, dy, dz = lx / nx, ly / ny, lz / nz
@@ -26,23 +26,23 @@ def run():
     ncells = nx * ny * nz
     npoints = (nx + 1) * (ny + 1) * (nz + 1)
 
-    # Coordinates
+    # 坐标
     x = np.arange(0, lx + 0.1 * dx, dx, dtype="float64")
     y = np.arange(0, ly + 0.1 * dy, dy, dtype="float64")
     z = np.arange(0, lz + 0.1 * dz, dz, dtype="float64")
 
-    # Variables
+    # 数据变量
     pressure = np.random.rand(ncells).reshape((nx, ny, nz))
     temp = np.random.rand(npoints).reshape((nx + 1, ny + 1, nz + 1))
 
     comments = ["comment 1", "comment 2"]
-    rectilinearToVTK(
+    rectilinear_to_vtk(
         FILE_PATH,
         x,
         y,
         z,
-        cellData={"pressure": pressure},
-        pointData={"temp": temp},
+        cell_data={"pressure": pressure},
+        point_data={"temp": temp},
         comments=comments,
     )
 

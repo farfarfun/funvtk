@@ -25,7 +25,7 @@
 ######################################################################################
 
 # **************************************************************
-# * Example of how to use the high level gridToVTK function.   *
+# * 高层 structured_to_vtk 函数示例。                          *
 # * This example shows how to export a structured grid.        *
 # **************************************************************
 import random as rnd
@@ -33,7 +33,7 @@ from pathlib import Path
 
 import numpy as np
 
-from funvtk.hl import structuredToVTK
+from funvtk.hl import structured_to_vtk
 
 FILE_PATH = "./structured"
 
@@ -43,7 +43,7 @@ def clean():
 
 
 def run():
-    # Dimensions
+    # 数据尺寸
     nx, ny, nz = 6, 6, 2
     lx, ly, lz = 1.0, 1.0, 1.0
     dx, dy, dz = lx / nx, ly / ny, lz / nz
@@ -51,7 +51,7 @@ def run():
     ncells = nx * ny * nz
     npoints = (nx + 1) * (ny + 1) * (nz + 1)
 
-    # Coordinates
+    # 坐标
     X = np.arange(0, lx + 0.1 * dx, dx, dtype="float64")
     Y = np.arange(0, ly + 0.1 * dy, dy, dtype="float64")
     Z = np.arange(0, lz + 0.1 * dz, dz, dtype="float64")
@@ -60,8 +60,7 @@ def run():
     y = np.zeros((nx + 1, ny + 1, nz + 1))
     z = np.zeros((nx + 1, ny + 1, nz + 1))
 
-    # We add some random fluctuation to make the grid
-    # more interesting
+    # 添加随机扰动，使网格更有变化。
     for k in range(nz + 1):
         for j in range(ny + 1):
             for i in range(nx + 1):
@@ -69,18 +68,18 @@ def run():
                 y[i, j, k] = Y[j] + (0.5 - rnd.random()) * 0.1 * dy
                 z[i, j, k] = Z[k] + (0.5 - rnd.random()) * 0.1 * dz
 
-    # Variables
+    # 数据变量
     pressure = np.random.rand(ncells).reshape((nx, ny, nz))
     temp = np.random.rand(npoints).reshape((nx + 1, ny + 1, nz + 1))
 
     comments = ["comment 1", "comment 2"]
-    structuredToVTK(
+    structured_to_vtk(
         FILE_PATH,
         x,
         y,
         z,
-        cellData={"pressure": pressure},
-        pointData={"temp": temp},
+        cell_data={"pressure": pressure},
+        point_data={"temp": temp},
         comments=comments,
     )
 

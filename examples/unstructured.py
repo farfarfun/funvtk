@@ -25,7 +25,7 @@
 ######################################################################################
 
 # ************************************************************************
-# * Example of how to use the high level unstructuredGridToVTK function. *
+# * 高层 unstructured_grid_to_vtk 函数示例。                        *
 # * This example shows how to export a unstructured grid give its        *
 # * nodes and topology through a connectivity and offset lists.          *
 # * Check the VTK file format for details of the unstructured grid.      *
@@ -34,7 +34,7 @@ from pathlib import Path
 
 import numpy as np
 
-from funvtk.hl import unstructuredGridToVTK
+from funvtk.hl import unstructured_grid_to_vtk
 from funvtk.vtk import VtkQuad, VtkTriangle
 
 FILE_PATH = "./unstructured"
@@ -46,7 +46,7 @@ def clean():
 
 def run():
 
-    # Define vertices
+    # 定义顶点
     x = np.zeros(6)
     y = np.zeros(6)
     z = np.zeros(6)
@@ -58,33 +58,33 @@ def run():
     x[4], y[4], z[4] = 1.0, 1.0, 0.0
     x[5], y[5], z[5] = 2.0, 1.0, 0.0
 
-    # Define connectivity or vertices that belongs to each element
+    # 定义每个单元包含的顶点
     conn = np.zeros(10)
 
-    conn[0], conn[1], conn[2] = 0, 1, 3  # first triangle
-    conn[3], conn[4], conn[5] = 1, 4, 3  # second triangle
-    conn[6], conn[7], conn[8], conn[9] = 1, 2, 5, 4  # rectangle
+    conn[0], conn[1], conn[2] = 0, 1, 3  # 第一个三角形
+    conn[3], conn[4], conn[5] = 1, 4, 3  # 第二个三角形
+    conn[6], conn[7], conn[8], conn[9] = 1, 2, 5, 4  # 矩形
 
-    # Define offset of last vertex of each element
+    # 定义每个单元最后一个顶点的偏移
     offset = np.zeros(3)
     offset[0] = 3
     offset[1] = 6
     offset[2] = 10
 
-    # Define cell types
+    # 定义单元类型
 
     ctype = np.zeros(3)
     ctype[0], ctype[1] = VtkTriangle.tid, VtkTriangle.tid
     ctype[2] = VtkQuad.tid
 
     cd = np.random.rand(3)
-    cellData = {"pressure": cd}
+    cell_data = {"pressure": cd}
 
     pd = np.random.rand(6)
-    pointData = {"ec": pd}
+    point_data = {"ec": pd}
 
     comments = ["comment 1", "comment 2"]
-    unstructuredGridToVTK(
+    unstructured_grid_to_vtk(
         FILE_PATH,
         x,
         y,
@@ -92,8 +92,8 @@ def run():
         connectivity=conn,
         offsets=offset,
         cell_types=ctype,
-        cellData=cellData,
-        pointData=pointData,
+        cell_data=cell_data,
+        point_data=point_data,
         comments=comments,
     )
 

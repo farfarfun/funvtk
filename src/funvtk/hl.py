@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.spatial import Delaunay
@@ -22,70 +24,81 @@ _Data = dict[str, ArrayLike]
 # =================================
 #       辅助函数
 # =================================
-def _addDataToFile(vtkFile, cellData, pointData):
+def _add_data_to_file(vtk_file, cell_data, point_data):
     # 点数据
-    if pointData:
-        keys = sorted(list(pointData.keys()))
-        vtkFile.openData("Point", scalars=keys[0])
+    if point_data:
+        keys = sorted(list(point_data.keys()))
+        vtk_file.openData("Point", scalars=keys[0])
         for key in keys:
-            data = pointData[key]
-            vtkFile.addData(key, data)
-        vtkFile.closeData("Point")
+            data = point_data[key]
+            vtk_file.addData(key, data)
+        vtk_file.closeData("Point")
 
     # 单元数据
-    if cellData:
-        keys = sorted(list(cellData.keys()))
-        vtkFile.openData("Cell", scalars=keys[0])
+    if cell_data:
+        keys = sorted(list(cell_data.keys()))
+        vtk_file.openData("Cell", scalars=keys[0])
         for key in keys:
-            data = cellData[key]
-            vtkFile.addData(key, data)
-        vtkFile.closeData("Cell")
+            data = cell_data[key]
+            vtk_file.addData(key, data)
+        vtk_file.closeData("Cell")
 
 
-def _appendDataToFile(vtkFile, cellData, pointData):
+def _append_data_to_file(vtk_file, cell_data, point_data):
     # 将数据追加到二进制区段
-    if pointData is not None:
-        keys = sorted(list(pointData.keys()))
+    if point_data is not None:
+        keys = sorted(list(point_data.keys()))
         for key in keys:
-            data = pointData[key]
-            vtkFile.appendData(data)
+            data = point_data[key]
+            vtk_file.appendData(data)
 
-    if cellData is not None:
-        keys = sorted(list(cellData.keys()))
+    if cell_data is not None:
+        keys = sorted(list(cell_data.keys()))
         for key in keys:
-            data = cellData[key]
-            vtkFile.appendData(data)
+            data = cell_data[key]
+            vtk_file.appendData(data)
 
 
-def __convertListToArray(list1d):
+def _convert_list_to_array(list_1d):
     """将列表或元组转为 NumPy 数组，数组原样返回。"""
-    if (list1d is not None) and (not type(list1d).__name__ == "ndarray"):
-        assert isinstance(list1d, (list, tuple))
-        return np.array(list1d)
+    if (list_1d is not None) and (not type(list_1d).__name__ == "ndarray"):
+        assert isinstance(list_1d, (list, tuple))
+        return np.array(list_1d)
     else:
-        return list1d
+        return list_1d
 
 
-def __convertDictListToArrays(data):
+def _convert_dict_lists_to_arrays(data):
     """将字典中的列表或元组值转为 NumPy 数组。"""
     if data is not None:
         dict = {}
-        for k, list1d in data.items():
-            dict[k] = __convertListToArray(list1d)
+        for k, list_1d in data.items():
+            dict[k] = _convert_list_to_array(list_1d)
         return dict
     else:
         return data  # None
 
 
+def _validate_data_lengths(data, expected_length, argument_name):
+    """校验标量数据数组与对应点或单元的数量一致。"""
+    if data is None:
+        return
+    for name, values in data.items():
+        if values.size != expected_length:
+            raise ValueError(
+                f"{argument_name}[{name!r}] 的元素数量必须为 {expected_length}"
+            )
+
+
 # =================================
 #       高层函数
 # =================================
-def imageToVTK(
+def image_to_vtk(
     path: str,
     origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
     spacing: tuple[float, float, float] = (1.0, 1.0, 1.0),
-    cellData: _Data | None = None,
-    pointData: _Data | None = None,
+    cell_data: _Data | None = None,
+    point_data: _Data | None = None,
     comments: list[str] | None = None,
 ) -> str:
     """将规则图像数据写入 VTK 文件。
@@ -94,18 +107,23 @@ def imageToVTK(
     ``cellData``、``pointData`` 是名称到数据数组的映射，至少提供其中一个以推断
     网格尺寸。``comments`` 会写入 XML 头部。返回生成文件的绝对路径。
     """
-    assert cellData is not None or pointData is not None
+    if cell_data is None and point_data is None:
+        raise ValueError("必须提供 cell_data 或 point_data")
 
     # 推断网格尺寸
     start = (0, 0, 0)
     end = None
-    if cellData is not None:
-        keys = list(cellData.keys())
-        data = cellData[keys[0]]
+    if cell_data is not None:
+        if not cell_data:
+            raise ValueError("cell_data 不能为空")
+        keys = list(cell_data.keys())
+        data = cell_data[keys[0]]
         end = data.shape
-    elif pointData is not None:
-        keys = list(pointData.keys())
-        data = pointData[keys[0]]
+    elif point_data is not None:
+        if not point_data:
+            raise ValueError("point_data 不能为空")
+        keys = list(point_data.keys())
+        data = point_data[keys[0]]
         end = data.shape
         end = (end[0] - 1, end[1] - 1, end[2] - 1)
 
@@ -115,22 +133,22 @@ def imageToVTK(
         w.addComments(comments)
     w.openGrid(start=start, end=end, origin=origin, spacing=spacing)
     w.openPiece(start=start, end=end)
-    _addDataToFile(w, cellData, pointData)
+    _add_data_to_file(w, cell_data, point_data)
     w.closePiece()
     w.closeGrid()
-    _appendDataToFile(w, cellData, pointData)
+    _append_data_to_file(w, cell_data, point_data)
     w.save()
     return w.getFileName()
 
 
 # ==============================================================================
-def rectilinearToVTK(
+def rectilinear_to_vtk(
     path: str,
     x: NDArray,
     y: NDArray,
     z: NDArray,
-    cellData: _Data | None = None,
-    pointData: _Data | None = None,
+    cell_data: _Data | None = None,
+    point_data: _Data | None = None,
     comments: list[str] | None = None,
 ) -> str:
     """将直角坐标网格写入 VTK 文件。
@@ -139,7 +157,8 @@ def rectilinearToVTK(
     ``pointData`` 写入单元及点数据，通过 ``comments`` 写入头部注释。
     返回生成文件的绝对路径。
     """
-    assert x.ndim == 1 and y.ndim == 1 and z.ndim == 1, "Wrong array dimension"
+    if not (x.ndim == 1 and y.ndim == 1 and z.ndim == 1):
+        raise ValueError("x、y、z 必须是一维数组")
     ftype = VtkRectilinearGrid
     nx, ny, nz = x.size - 1, y.size - 1, z.size - 1
     # 推断网格尺寸
@@ -158,24 +177,24 @@ def rectilinearToVTK(
     w.addData("z_coordinates", z)
     w.closeElement("Coordinates")
 
-    _addDataToFile(w, cellData, pointData)
+    _add_data_to_file(w, cell_data, point_data)
     w.closePiece()
     w.closeGrid()
     # 写入坐标
     w.appendData(x).appendData(y).appendData(z)
     # 写入数据
-    _appendDataToFile(w, cellData, pointData)
+    _append_data_to_file(w, cell_data, point_data)
     w.save()
     return w.getFileName()
 
 
-def structuredToVTK(
+def structured_to_vtk(
     path: str,
     x: NDArray,
     y: NDArray,
     z: NDArray,
-    cellData: _Data | None = None,
-    pointData: _Data | None = None,
+    cell_data: _Data | None = None,
+    point_data: _Data | None = None,
     comments: list[str] | None = None,
 ) -> str:
     """将逻辑结构网格写入 VTK 文件。
@@ -183,7 +202,10 @@ def structuredToVTK(
     ``x``、``y``、``z`` 必须是形状相同的三维节点坐标数组。可通过
     ``cellData`` 和 ``pointData`` 写入单元及点数据。返回生成文件的绝对路径。
     """
-    assert x.ndim == 3 and y.ndim == 3 and z.ndim == 3, "Wrong arrays dimensions"
+    if not (x.ndim == 3 and y.ndim == 3 and z.ndim == 3):
+        raise ValueError("x、y、z 必须是三维数组")
+    if not (x.shape == y.shape == z.shape):
+        raise ValueError("x、y、z 的形状必须相同")
 
     ftype = VtkStructuredGrid
     s = x.shape
@@ -200,22 +222,22 @@ def structuredToVTK(
     w.addData("points", (x, y, z))
     w.closeElement("Points")
 
-    _addDataToFile(w, cellData, pointData)
+    _add_data_to_file(w, cell_data, point_data)
     w.closePiece()
     w.closeGrid()
     w.appendData((x, y, z))
-    _appendDataToFile(w, cellData, pointData)
+    _append_data_to_file(w, cell_data, point_data)
     w.save()
     return w.getFileName()
 
 
-def gridToVTK(
+def grid_to_vtk(
     path: str,
     x: NDArray,
     y: NDArray,
     z: NDArray,
-    cellData: _Data | None = None,
-    pointData: _Data | None = None,
+    cell_data: _Data | None = None,
+    point_data: _Data | None = None,
     comments: list[str] | None = None,
 ) -> str:
     """根据坐标维度写入直角坐标网格或逻辑结构网格。
@@ -237,7 +259,10 @@ def gridToVTK(
         isRect = False
         ftype = VtkStructuredGrid
     else:
-        assert False
+        raise ValueError("x、y、z 必须全部是一维数组或全部是三维数组")
+
+    if not isRect and not (x.shape == y.shape == z.shape):
+        raise ValueError("x、y、z 的形状必须相同")
 
     end = (nx, ny, nz)
     w = VtkFile(path, ftype)
@@ -257,7 +282,7 @@ def gridToVTK(
         w.addData("points", (x, y, z))
         w.closeElement("Points")
 
-    _addDataToFile(w, cellData, pointData)
+    _add_data_to_file(w, cell_data, point_data)
     w.closePiece()
     w.closeGrid()
     # 写入坐标
@@ -266,13 +291,13 @@ def gridToVTK(
     else:
         w.appendData((x, y, z))
     # 写入数据
-    _appendDataToFile(w, cellData, pointData)
+    _append_data_to_file(w, cell_data, point_data)
     w.save()
     return w.getFileName()
 
 
 # ==============================================================================
-def pointsToVTK(
+def points_to_vtk(
     path: str,
     x: ArrayLike,
     y: ArrayLike,
@@ -285,13 +310,15 @@ def pointsToVTK(
     ``x``、``y``、``z`` 是长度相同的一维坐标序列，``data`` 是点数据名称到
     等长序列的映射。返回生成文件的绝对路径。
     """
-    assert len(x) == len(y) == len(z)
-    x = __convertListToArray(x)
-    y = __convertListToArray(y)
-    z = __convertListToArray(z)
-    data = __convertDictListToArrays(data)
+    if not (len(x) == len(y) == len(z)):
+        raise ValueError("x、y、z 的长度必须相同")
+    x = _convert_list_to_array(x)
+    y = _convert_list_to_array(y)
+    z = _convert_list_to_array(z)
+    data = _convert_dict_lists_to_arrays(data)
 
     npoints = len(x)
+    _validate_data_lengths(data, npoints, "data")
 
     # 构造网格拓扑数组
     offsets = np.arange(
@@ -317,21 +344,21 @@ def pointsToVTK(
     w.addData("types", cell_types)
     w.closeElement("Cells")
 
-    _addDataToFile(w, cellData=None, pointData=data)
+    _add_data_to_file(w, cell_data=None, point_data=data)
 
     w.closePiece()
     w.closeGrid()
     w.appendData((x, y, z))
     w.appendData(connectivity).appendData(offsets).appendData(cell_types)
 
-    _appendDataToFile(w, cellData=None, pointData=data)
+    _append_data_to_file(w, cell_data=None, point_data=data)
 
     w.save()
     return w.getFileName()
 
 
 # ==============================================================================
-def pointsToVTKAsTIN(
+def points_to_vtk_as_tin(
     path: str,
     x: ArrayLike,
     y: ArrayLike,
@@ -347,12 +374,14 @@ def pointsToVTKAsTIN(
     返回生成文件的绝对路径。
     """
 
-    assert len(x) == len(y) and len(x) == len(z)
-    assert (ndim == 2) or (ndim == 3)
-    x = __convertListToArray(x)
-    y = __convertListToArray(y)
-    z = __convertListToArray(z)
-    data = __convertDictListToArrays(data)
+    if not (len(x) == len(y) == len(z)):
+        raise ValueError("x、y、z 的长度必须相同")
+    if ndim not in (2, 3):
+        raise ValueError("ndim 必须为 2 或 3")
+    x = _convert_list_to_array(x)
+    y = _convert_list_to_array(y)
+    z = _convert_list_to_array(z)
+    data = _convert_dict_lists_to_arrays(data)
 
     npts = len(x)
 
@@ -373,7 +402,7 @@ def pointsToVTKAsTIN(
 
     if not data:
         data = {"Elevation": z}
-    return unstructuredGridToVTK(
+    return unstructured_grid_to_vtk(
         path,
         x,
         y,
@@ -381,20 +410,20 @@ def pointsToVTKAsTIN(
         connectivity=conn,
         offsets=offset,
         cell_types=cell_type,
-        cellData=None,
-        pointData=data,
+        cell_data=None,
+        point_data=data,
         comments=comments,
     )
 
 
 # ==============================================================================
-def linesToVTK(
+def lines_to_vtk(
     path: str,
     x: NDArray,
     y: NDArray,
     z: NDArray,
-    cellData: _Data | None = None,
-    pointData: _Data | None = None,
+    cell_data: _Data | None = None,
+    point_data: _Data | None = None,
     comments: list[str] | None = None,
 ) -> str:
     """将两点一组的线段及关联数据写入 VTK 文件。
@@ -402,17 +431,21 @@ def linesToVTK(
     ``x``、``y``、``z`` 必须是长度相同且元素数为偶数的一维数组。
     ``cellData`` 和 ``pointData`` 分别提供线段和顶点数据。返回生成文件的绝对路径。
     """
-    assert x.size == y.size == z.size
-    assert x.size % 2 == 0
+    if not (x.size == y.size == z.size):
+        raise ValueError("x、y、z 的长度必须相同")
+    if x.size % 2 != 0:
+        raise ValueError("坐标数量必须为偶数")
 
-    x = __convertListToArray(x)
-    y = __convertListToArray(y)
-    z = __convertListToArray(z)
-    cellData = __convertDictListToArrays(cellData)
-    pointData = __convertDictListToArrays(pointData)
+    x = _convert_list_to_array(x)
+    y = _convert_list_to_array(y)
+    z = _convert_list_to_array(z)
+    cell_data = _convert_dict_lists_to_arrays(cell_data)
+    point_data = _convert_dict_lists_to_arrays(point_data)
 
     npoints = len(x)
     ncells = int(len(x) / 2.0)
+    _validate_data_lengths(cell_data, ncells, "cell_data")
+    _validate_data_lengths(point_data, npoints, "point_data")
 
     # 构造网格拓扑数组
     offsets = np.arange(
@@ -438,28 +471,28 @@ def linesToVTK(
     w.addData("types", cell_types)
     w.closeElement("Cells")
 
-    _addDataToFile(w, cellData=cellData, pointData=pointData)
+    _add_data_to_file(w, cell_data=cell_data, point_data=point_data)
 
     w.closePiece()
     w.closeGrid()
     w.appendData((x, y, z))
     w.appendData(connectivity).appendData(offsets).appendData(cell_types)
 
-    _appendDataToFile(w, cellData=cellData, pointData=pointData)
+    _append_data_to_file(w, cell_data=cell_data, point_data=point_data)
 
     w.save()
     return w.getFileName()
 
 
 # ==============================================================================
-def polyLinesToVTK(
+def poly_lines_to_vtk(
     path: str,
     x: NDArray,
     y: NDArray,
     z: NDArray,
-    pointsPerLine: NDArray,
-    cellData: _Data | None = None,
-    pointData: _Data | None = None,
+    points_per_line: NDArray,
+    cell_data: _Data | None = None,
+    point_data: _Data | None = None,
     comments: list[str] | None = None,
 ) -> str:
     """将包含不同点数的折线及关联数据写入 VTK 文件。
@@ -468,22 +501,27 @@ def polyLinesToVTK(
     折线的点数。``cellData`` 和 ``pointData`` 分别提供折线和顶点数据。
     返回生成文件的绝对路径。
     """
-    assert x.size == y.size == z.size
+    if not (x.size == y.size == z.size):
+        raise ValueError("x、y、z 的长度必须相同")
 
-    x = __convertListToArray(x)
-    y = __convertListToArray(y)
-    z = __convertListToArray(z)
-    cellData = __convertDictListToArrays(cellData)
-    pointData = __convertDictListToArrays(pointData)
+    x = _convert_list_to_array(x)
+    y = _convert_list_to_array(y)
+    z = _convert_list_to_array(z)
+    cell_data = _convert_dict_lists_to_arrays(cell_data)
+    point_data = _convert_dict_lists_to_arrays(point_data)
 
     npoints = len(x)
-    ncells = pointsPerLine.size
+    ncells = points_per_line.size
+    if np.any(points_per_line < 2) or points_per_line.sum() != npoints:
+        raise ValueError("points_per_line 必须至少为 2，且总和必须等于坐标数量")
+    _validate_data_lengths(cell_data, ncells, "cell_data")
+    _validate_data_lengths(point_data, npoints, "point_data")
 
     # 构造网格拓扑数组
     offsets = np.zeros(ncells, dtype="int32")  # 每个单元最后一个节点的偏移
     ii = 0
     for i in range(ncells):
-        ii += pointsPerLine[i]
+        ii += points_per_line[i]
         offsets[i] = ii
 
     connectivity = np.arange(npoints, dtype="int32")  # 每条折线连接连续排列的点
@@ -506,21 +544,21 @@ def polyLinesToVTK(
     w.addData("types", cell_types)
     w.closeElement("Cells")
 
-    _addDataToFile(w, cellData=cellData, pointData=pointData)
+    _add_data_to_file(w, cell_data=cell_data, point_data=point_data)
 
     w.closePiece()
     w.closeGrid()
     w.appendData((x, y, z))
     w.appendData(connectivity).appendData(offsets).appendData(cell_types)
 
-    _appendDataToFile(w, cellData=cellData, pointData=pointData)
+    _append_data_to_file(w, cell_data=cell_data, point_data=point_data)
 
     w.save()
     return w.getFileName()
 
 
 # ==============================================================================
-def unstructuredGridToVTK(
+def unstructured_grid_to_vtk(
     path: str,
     x: NDArray,
     y: NDArray,
@@ -528,8 +566,8 @@ def unstructuredGridToVTK(
     connectivity: ArrayLike,
     offsets: ArrayLike,
     cell_types: ArrayLike,
-    cellData: _Data | None = None,
-    pointData: _Data | None = None,
+    cell_data: _Data | None = None,
+    point_data: _Data | None = None,
     comments: list[str] | None = None,
 ) -> str:
     """将非结构网格及关联数据写入 VTK 文件。
@@ -538,19 +576,23 @@ def unstructuredGridToVTK(
     ``cell_types`` 描述单元拓扑。``cellData`` 与 ``pointData`` 分别提供单元和
     顶点数据。返回生成文件的绝对路径。
     """
-    assert x.size == y.size == z.size
-    x = __convertListToArray(x)
-    y = __convertListToArray(y)
-    z = __convertListToArray(z)
-    connectivity = __convertListToArray(connectivity)
-    offsets = __convertListToArray(offsets)
-    cell_types = __convertListToArray(cell_types)
-    cellData = __convertDictListToArrays(cellData)
-    pointData = __convertDictListToArrays(pointData)
+    if not (x.size == y.size == z.size):
+        raise ValueError("x、y、z 的长度必须相同")
+    x = _convert_list_to_array(x)
+    y = _convert_list_to_array(y)
+    z = _convert_list_to_array(z)
+    connectivity = _convert_list_to_array(connectivity)
+    offsets = _convert_list_to_array(offsets)
+    cell_types = _convert_list_to_array(cell_types)
+    cell_data = _convert_dict_lists_to_arrays(cell_data)
+    point_data = _convert_dict_lists_to_arrays(point_data)
 
     npoints = x.size
     ncells = cell_types.size
-    assert offsets.size == ncells
+    if offsets.size != ncells:
+        raise ValueError("offsets 与 cell_types 的长度必须相同")
+    _validate_data_lengths(cell_data, ncells, "cell_data")
+    _validate_data_lengths(point_data, npoints, "point_data")
 
     w = VtkFile(path, VtkUnstructuredGrid)
     if comments:
@@ -567,21 +609,21 @@ def unstructuredGridToVTK(
     w.addData("types", cell_types)
     w.closeElement("Cells")
 
-    _addDataToFile(w, cellData=cellData, pointData=pointData)
+    _add_data_to_file(w, cell_data=cell_data, point_data=point_data)
 
     w.closePiece()
     w.closeGrid()
     w.appendData((x, y, z))
     w.appendData(connectivity).appendData(offsets).appendData(cell_types)
 
-    _appendDataToFile(w, cellData=cellData, pointData=pointData)
+    _append_data_to_file(w, cell_data=cell_data, point_data=point_data)
 
     w.save()
     return w.getFileName()
 
 
 # ==============================================================================
-def cylinderToVTK(
+def cylinder_to_vtk(
     path: str,
     x0: float,
     y0: float,
@@ -590,8 +632,8 @@ def cylinderToVTK(
     radius: float,
     nlayers: int,
     npilars: int = 16,
-    cellData: _Data | None = None,
-    pointData: _Data | None = None,
+    cell_data: _Data | None = None,
+    point_data: _Data | None = None,
     comments: list[str] | None = None,
 ) -> str:
     """将竖直圆柱侧面写入 VTK 非结构网格。
@@ -657,7 +699,7 @@ def cylinderToVTK(
     # 构造单元类型
     ctype = np.ones(ncells) + VtkPixel.tid
 
-    return unstructuredGridToVTK(
+    return unstructured_grid_to_vtk(
         path,
         xx,
         yy,
@@ -665,7 +707,47 @@ def cylinderToVTK(
         connectivity=conn,
         offsets=offsets,
         cell_types=ctype,
-        cellData=cellData,
-        pointData=pointData,
+        cell_data=cell_data,
+        point_data=point_data,
         comments=comments,
     )
+
+
+def _deprecated_api(old_name, new_function):
+    """为旧版 CamelCase API 创建兼容包装器。"""
+
+    keyword_names = {
+        "cellData": "cell_data",
+        "pointData": "point_data",
+        "pointsPerLine": "points_per_line",
+    }
+
+    def wrapper(*args, **kwargs):
+        warnings.warn(
+            f"{old_name} 已弃用，请改用 {new_function.__name__}",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        for old_keyword, new_keyword in keyword_names.items():
+            if old_keyword in kwargs:
+                kwargs[new_keyword] = kwargs.pop(old_keyword)
+        return new_function(*args, **kwargs)
+
+    wrapper.__name__ = old_name
+    wrapper.__doc__ = f"已弃用；请改用 :func:`{new_function.__name__}`。"
+    return wrapper
+
+
+# 旧名称至少保留一个次版本周期，便于现有调用方平滑迁移。
+imageToVTK = _deprecated_api("imageToVTK", image_to_vtk)
+rectilinearToVTK = _deprecated_api("rectilinearToVTK", rectilinear_to_vtk)
+structuredToVTK = _deprecated_api("structuredToVTK", structured_to_vtk)
+gridToVTK = _deprecated_api("gridToVTK", grid_to_vtk)
+pointsToVTK = _deprecated_api("pointsToVTK", points_to_vtk)
+pointsToVTKAsTIN = _deprecated_api("pointsToVTKAsTIN", points_to_vtk_as_tin)
+linesToVTK = _deprecated_api("linesToVTK", lines_to_vtk)
+polyLinesToVTK = _deprecated_api("polyLinesToVTK", poly_lines_to_vtk)
+unstructuredGridToVTK = _deprecated_api(
+    "unstructuredGridToVTK", unstructured_grid_to_vtk
+)
+cylinderToVTK = _deprecated_api("cylinderToVTK", cylinder_to_vtk)

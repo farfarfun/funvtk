@@ -54,7 +54,7 @@ def run():
     w.openGrid(start=start, end=end)
     w.openPiece(start=start, end=end)
 
-    # Point data
+    # 点数据
     temp = np.random.rand(npoints)
     vx = vy = vz = np.zeros([nx + 1, ny + 1, nz + 1], dtype="float64", order="F")
     w.openData("Point", scalars="Temperature", vectors="Velocity")
@@ -62,13 +62,13 @@ def run():
     w.addData("Velocity", (vx, vy, vz))
     w.closeData("Point")
 
-    # Cell data
+    # 单元数据
     pressure = np.ones([nx, ny, nz], dtype="float64", order="F")
     w.openData("Cell", scalars="Pressure")
     w.addData("Pressure", pressure)
     w.closeData("Cell")
 
-    # Coordinates of cell vertices
+    # 单元顶点坐标
     w.openElement("Coordinates")
     w.addData("x_coordinates", x)
     w.addData("y_coordinates", y)

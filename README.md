@@ -11,9 +11,9 @@ pip install funvtk
 ## 使用
 
 ```python
-from funvtk import pointsToVTK
+from funvtk import points_to_vtk
 
-output = pointsToVTK(
+output = points_to_vtk(
     "points",
     x=[0.0, 1.0],
     y=[0.0, 1.0],

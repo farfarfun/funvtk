@@ -25,13 +25,13 @@
 ######################################################################################
 
 # **************************************************************
-# * Example of how to use the high level pointsToVTK function. *
+# * 高层 lines_to_vtk 函数示例。                               *
 # **************************************************************
 from pathlib import Path
 
 import numpy as np
 
-from funvtk.hl import linesToVTK
+from funvtk.hl import lines_to_vtk
 
 FILE_PATH = "./lines"
 
@@ -57,13 +57,13 @@ def run():
     x[3], y[3], z[3] = -1.0, 1.0, 1.0
 
     comments = ["comment 1", "comment 2"]
-    linesToVTK(
+    lines_to_vtk(
         FILE_PATH,
         x,
         y,
         z,
-        cellData={"vel": vel},
-        pointData={"temp": temp, "pressure": pressure},
+        cell_data={"vel": vel},
+        point_data={"temp": temp, "pressure": pressure},
         comments=comments,
     )
 

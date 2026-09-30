@@ -1,13 +1,8 @@
-"""Lightweight smoke tests for funvtk.
+"""funvtk 的轻量级冒烟测试。
 
-funvtk is a pure-Python fork of pyevtk: it writes numerical grid/point data
-to VTK XML files (.vtu/.vtp/.vtr/.vts/.vti/.pvd). It does not depend on the
-real VTK/ParaView C++ libraries and does not need a display, GPU, network,
-or credentials, so it is straightforward to smoke test end-to-end by writing
-small files to a temporary directory and checking they were created.
-
-There is no [project.scripts]/[tool.poetry.scripts] CLI entry point in this
-package, so no CLI smoke test is included.
+funvtk 是 pyevtk 的纯 Python 分支，用于将数值网格和点数据写入 VTK XML 文件。
+它不依赖 VTK/ParaView 的 C++ 库，也不需要显示设备、GPU、网络或凭据，因此可通过
+向临时目录写入小文件来完成端到端测试。
 """
 
 import os
@@ -16,7 +11,7 @@ import numpy as np
 import pytest
 
 # ---------------------------------------------------------------------------
-# Import smoke tests
+# 导入测试
 # ---------------------------------------------------------------------------
 
 
@@ -29,10 +24,19 @@ def test_import_top_level_package():
 def test_top_level_public_api_symbols():
     import funvtk
 
-    for name in ("pointsToVTK", "pointsToVTKAsTIN", "polyLinesToVTK", "gridToVTK"):
+    for name in (
+        "points_to_vtk",
+        "points_to_vtk_as_tin",
+        "poly_lines_to_vtk",
+        "grid_to_vtk",
+    ):
         assert hasattr(funvtk, name), f"funvtk.{name} missing"
         assert callable(getattr(funvtk, name))
     assert set(funvtk.__all__) == {
+        "points_to_vtk",
+        "points_to_vtk_as_tin",
+        "poly_lines_to_vtk",
+        "grid_to_vtk",
         "pointsToVTK",
         "pointsToVTKAsTIN",
         "polyLinesToVTK",
@@ -53,12 +57,12 @@ def test_import_version_submodule():
 
 
 # ---------------------------------------------------------------------------
-# High level API smoke tests (funvtk.hl / funvtk top-level re-exports)
+# 高层 API 冒烟测试
 # ---------------------------------------------------------------------------
 
 
 def test_points_to_vtk_writes_file(tmp_path):
-    from funvtk import pointsToVTK
+    from funvtk import points_to_vtk
 
     npoints = 10
     x = np.random.rand(npoints)
@@ -67,7 +71,7 @@ def test_points_to_vtk_writes_file(tmp_path):
     pressure = np.random.rand(npoints)
 
     out_path = str(tmp_path / "points")
-    result = pointsToVTK(out_path, x, y, z, data={"pressure": pressure})
+    result = points_to_vtk(out_path, x, y, z, data={"pressure": pressure})
 
     assert result == out_path + ".vtu"
     assert os.path.isfile(result)
@@ -75,15 +79,15 @@ def test_points_to_vtk_writes_file(tmp_path):
 
 
 def test_points_to_vtk_as_tin_writes_file(tmp_path):
-    """Exercises the scipy.spatial.Delaunay dependency."""
-    from funvtk import pointsToVTKAsTIN
+    """覆盖 scipy.spatial.Delaunay 依赖。"""
+    from funvtk import points_to_vtk_as_tin
 
     x = np.array([0.0, 1.0, 1.0, 0.0, 0.5])
     y = np.array([0.0, 0.0, 1.0, 1.0, 0.5])
     z = np.arange(5, dtype="float64")
 
     out_path = str(tmp_path / "tin")
-    result = pointsToVTKAsTIN(out_path, x, y, z, ndim=2)
+    result = points_to_vtk_as_tin(out_path, x, y, z, ndim=2)
 
     assert result == out_path + ".vtu"
     assert os.path.isfile(result)
@@ -91,24 +95,22 @@ def test_points_to_vtk_as_tin_writes_file(tmp_path):
 
 
 def test_points_to_vtk_as_3d_tin_writes_file(tmp_path):
-    from funvtk import pointsToVTKAsTIN
+    from funvtk import points_to_vtk_as_tin
 
     x = np.array([0.0, 1.0, 0.0, 0.0, 1.0])
     y = np.array([0.0, 0.0, 1.0, 0.0, 1.0])
     z = np.array([0.0, 0.0, 0.0, 1.0, 1.0])
 
     out_path = str(tmp_path / "tin_3d")
-    result = pointsToVTKAsTIN(out_path, x, y, z, ndim=3)
+    result = points_to_vtk_as_tin(out_path, x, y, z, ndim=3)
 
     assert result == out_path + ".vtu"
     assert os.path.getsize(result) > 0
 
 
 def test_grid_to_vtk_structured_writes_file(tmp_path):
-    """gridToVTK() with 3D coordinate arrays exercises the "structured"
-    branch, which works correctly.
-    """
-    from funvtk import gridToVTK
+    """三维坐标数组覆盖逻辑结构网格分支。"""
+    from funvtk import grid_to_vtk
 
     nx, ny, nz = 3, 3, 3
     x, y, z = np.meshgrid(
@@ -119,14 +121,14 @@ def test_grid_to_vtk_structured_writes_file(tmp_path):
     )
 
     out_path = str(tmp_path / "grid_structured")
-    result = gridToVTK(out_path, x, y, z)
+    result = grid_to_vtk(out_path, x, y, z)
 
     assert os.path.isfile(result)
     assert os.path.getsize(result) > 0
 
 
 def test_grid_to_vtk_rectilinear_writes_file(tmp_path):
-    from funvtk import gridToVTK
+    from funvtk import grid_to_vtk
 
     x = np.arange(0, 5, dtype="float64")
     y = np.arange(0, 4, dtype="float64")
@@ -134,7 +136,7 @@ def test_grid_to_vtk_rectilinear_writes_file(tmp_path):
     point_data = {"value": np.zeros((x.size, y.size, z.size))}
 
     out_path = str(tmp_path / "grid_rect")
-    result = gridToVTK(out_path, x, y, z, pointData=point_data)
+    result = grid_to_vtk(out_path, x, y, z, point_data=point_data)
 
     assert result == out_path + ".vtr"
     assert os.path.isfile(result)
@@ -142,34 +144,34 @@ def test_grid_to_vtk_rectilinear_writes_file(tmp_path):
 
 
 def test_poly_lines_to_vtk_writes_file(tmp_path):
-    from funvtk import polyLinesToVTK
+    from funvtk import poly_lines_to_vtk
 
-    # Two polylines: first with 3 points, second with 2 points.
+    # 两条折线：第一条包含 3 个点，第二条包含 2 个点。
     x = np.array([0.0, 1.0, 2.0, 5.0, 6.0])
     y = np.array([0.0, 1.0, 0.0, 2.0, 3.0])
     z = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
     points_per_line = np.array([3, 2])
 
     out_path = str(tmp_path / "polylines")
-    result = polyLinesToVTK(out_path, x, y, z, pointsPerLine=points_per_line)
+    result = poly_lines_to_vtk(out_path, x, y, z, points_per_line=points_per_line)
 
     assert os.path.isfile(result)
     assert os.path.getsize(result) > 0
 
 
 def test_image_to_vtk_writes_file(tmp_path):
-    from funvtk.hl import imageToVTK
+    from funvtk.hl import image_to_vtk
 
     point_data = {"val": np.random.rand(3, 4, 5)}
     out_path = str(tmp_path / "image")
-    result = imageToVTK(out_path, pointData=point_data)
+    result = image_to_vtk(out_path, point_data=point_data)
 
     assert os.path.isfile(result)
     assert os.path.getsize(result) > 0
 
 
 def test_lines_to_vtk_writes_file(tmp_path):
-    from funvtk.hl import linesToVTK
+    from funvtk.hl import lines_to_vtk
 
     npoints = 4
     x = np.array([0.0, 1.0, 0.0, -1.0])
@@ -179,8 +181,8 @@ def test_lines_to_vtk_writes_file(tmp_path):
     temp = np.random.rand(npoints)
 
     out_path = str(tmp_path / "lines")
-    result = linesToVTK(
-        out_path, x, y, z, cellData={"vel": vel}, pointData={"temp": temp}
+    result = lines_to_vtk(
+        out_path, x, y, z, cell_data={"vel": vel}, point_data={"temp": temp}
     )
 
     assert os.path.isfile(result)
@@ -188,7 +190,7 @@ def test_lines_to_vtk_writes_file(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Low level API smoke tests (funvtk.vtk / funvtk.xml)
+# 低层 API 冒烟测试
 # ---------------------------------------------------------------------------
 
 
@@ -232,14 +234,10 @@ def test_xml_writer_low_level(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# CLI entry point
+# CLI 入口
 # ---------------------------------------------------------------------------
 
 
 def test_no_cli_entry_point_declared():
-    """funvtk's pyproject.toml declares no [tool.poetry.scripts] /
-    [project.scripts] console entry point, so there is nothing to smoke
-    test via subprocess/CliRunner. This test documents that fact so a
-    future added CLI won't silently go untested.
-    """
+    """项目未声明控制台入口，因此没有可执行的 CLI 冒烟测试。"""
     pytest.skip("funvtk declares no CLI entry point in pyproject.toml")

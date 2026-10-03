@@ -64,11 +64,12 @@ def test_import_version_submodule():
 def test_points_to_vtk_writes_file(tmp_path):
     from funvtk import points_to_vtk
 
+    rng = np.random.default_rng(0)
     npoints = 10
-    x = np.random.rand(npoints)
-    y = np.random.rand(npoints)
-    z = np.random.rand(npoints)
-    pressure = np.random.rand(npoints)
+    x = rng.random(npoints)
+    y = rng.random(npoints)
+    z = rng.random(npoints)
+    pressure = rng.random(npoints)
 
     out_path = str(tmp_path / "points")
     result = points_to_vtk(out_path, x, y, z, data={"pressure": pressure})
@@ -162,7 +163,7 @@ def test_poly_lines_to_vtk_writes_file(tmp_path):
 def test_image_to_vtk_writes_file(tmp_path):
     from funvtk.hl import image_to_vtk
 
-    point_data = {"val": np.random.rand(3, 4, 5)}
+    point_data = {"val": np.random.default_rng(0).random((3, 4, 5))}
     out_path = str(tmp_path / "image")
     result = image_to_vtk(out_path, point_data=point_data)
 
@@ -178,7 +179,7 @@ def test_lines_to_vtk_writes_file(tmp_path):
     y = np.array([0.0, 1.0, 0.0, 1.0])
     z = np.array([0.0, 1.0, 0.0, 1.0])
     vel = np.zeros(2)
-    temp = np.random.rand(npoints)
+    temp = np.random.default_rng(0).random(npoints)
 
     out_path = str(tmp_path / "lines")
     result = lines_to_vtk(
@@ -240,4 +241,4 @@ def test_xml_writer_low_level(tmp_path):
 
 def test_no_cli_entry_point_declared():
     """项目未声明控制台入口，因此没有可执行的 CLI 冒烟测试。"""
-    pytest.skip("funvtk declares no CLI entry point in pyproject.toml")
+    pytest.skip("funvtk 的 pyproject.toml 未声明任何 CLI 入口")

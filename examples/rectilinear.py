@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 
 # **************************************************************
-# * 高层 rectilinear_to_vtk 函数示例。                         *
-# * This example shows how to export a rectilinear grid.       *
+# * 高层 rectilinear_to_vtk 函数示例：导出矩形网格。            *
 # **************************************************************
 from pathlib import Path
 

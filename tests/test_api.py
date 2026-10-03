@@ -96,9 +96,7 @@ def test_tin_dimension_must_be_supported(tmp_path):
 
 def test_grid_dimensions_and_shapes_must_match(tmp_path):
     with pytest.raises(ValueError, match="一维数组或全部是三维数组"):
-        grid_to_vtk(
-            str(tmp_path / "grid"), np.zeros(2), np.zeros((2, 2)), np.zeros(2)
-        )
+        grid_to_vtk(str(tmp_path / "grid"), np.zeros(2), np.zeros((2, 2)), np.zeros(2))
 
     with pytest.raises(ValueError, match="形状必须相同"):
         structured_to_vtk(

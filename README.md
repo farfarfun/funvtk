@@ -24,6 +24,26 @@ output = points_to_vtk(
 
 运行后将在当前目录生成 `points.vtu`。
 
+## 已弃用的 API
+
+早期版本使用 CamelCase 命名（如 `pointsToVTK`）。这些名称已弃用，调用时会触发
+`DeprecationWarning`，计划在 `2.0.0` 移除，请尽快迁移到对应的 snake_case 新接口：
+
+| 旧名称（已弃用） | 新名称 |
+|---|---|
+| `imageToVTK` | `image_to_vtk` |
+| `rectilinearToVTK` | `rectilinear_to_vtk` |
+| `structuredToVTK` | `structured_to_vtk` |
+| `gridToVTK` | `grid_to_vtk` |
+| `pointsToVTK` | `points_to_vtk` |
+| `pointsToVTKAsTIN` | `points_to_vtk_as_tin` |
+| `linesToVTK` | `lines_to_vtk` |
+| `polyLinesToVTK` | `poly_lines_to_vtk` |
+| `unstructuredGridToVTK` | `unstructured_grid_to_vtk` |
+| `cylinderToVTK` | `cylinder_to_vtk` |
+
+新接口的关键字参数名也做了同步调整（如 `cellData` → `cell_data`），旧接口仍兼容两种写法。
+
 ---
 
 ## 关于 farfarfun

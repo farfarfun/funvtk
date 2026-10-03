@@ -1,5 +1,23 @@
 # Changelog
 
+## 未发布
+
+### 修复
+
+- 弃用警告补充计划移除版本号（`2.0.0`），README 新增 CamelCase 旧 API 到 snake_case
+  新 API 的迁移对照表。
+- 兼容包装器 `_deprecated_api`/`wrapper` 补充类型标注。
+- 示例中残留的英文说明性注释改为中文（许可证原文保留）。
+- 冒烟测试改用固定种子的 `numpy.random.default_rng(0)`，避免随机输入导致偶发失败。
+- `examples/poly_lines.py` 的单元数据 `vel` 长度与折线数（`ncells`）不一致，
+  触发新增的长度校验后报错；改为每条折线一个值，和 `points_per_line` 对齐。
+
+### 废弃
+
+- `imageToVTK`/`rectilinearToVTK`/`structuredToVTK`/`gridToVTK`/`pointsToVTK`/
+  `pointsToVTKAsTIN`/`linesToVTK`/`polyLinesToVTK`/`unstructuredGridToVTK`/
+  `cylinderToVTK` 计划在 `2.0.0` 移除，请改用对应的 snake_case 新接口（详见 README）。
+
 ## 1.0.10
 
 ### 新增

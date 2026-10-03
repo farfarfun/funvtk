@@ -63,12 +63,10 @@ def run():
     points_per_line[0] = 4
     points_per_line[1] = 3
 
-    # 数据变量
+    # 数据变量：pressure/temp 为点数据，vel 为单元数据（每条折线一个值）
     pressure = np.random.rand(npoints)
     temp = np.random.rand(npoints)
-    vel = np.zeros(6)
-    vel[0:3] = 1.0
-    vel[4:6] = 5.0
+    vel = np.array([1.0, 5.0])
 
     poly_lines_to_vtk(
         FILE_PATH,

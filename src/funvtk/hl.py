@@ -1,4 +1,6 @@
 import warnings
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -713,7 +715,12 @@ def cylinder_to_vtk(
     )
 
 
-def _deprecated_api(old_name, new_function):
+_DEPRECATED_API_REMOVAL_VERSION = "2.0.0"
+
+
+def _deprecated_api(
+    old_name: str, new_function: Callable[..., str]
+) -> Callable[..., str]:
     """为旧版 CamelCase API 创建兼容包装器。"""
 
     keyword_names = {
@@ -722,9 +729,10 @@ def _deprecated_api(old_name, new_function):
         "pointsPerLine": "points_per_line",
     }
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> str:
         warnings.warn(
-            f"{old_name} 已弃用，请改用 {new_function.__name__}",
+            f"{old_name} 已弃用，计划在 {_DEPRECATED_API_REMOVAL_VERSION} 移除，"
+            f"请改用 {new_function.__name__}",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -734,7 +742,10 @@ def _deprecated_api(old_name, new_function):
         return new_function(*args, **kwargs)
 
     wrapper.__name__ = old_name
-    wrapper.__doc__ = f"已弃用；请改用 :func:`{new_function.__name__}`。"
+    wrapper.__doc__ = (
+        f"已弃用，计划在 {_DEPRECATED_API_REMOVAL_VERSION} 移除；"
+        f"请改用 :func:`{new_function.__name__}`。"
+    )
     return wrapper
 
 

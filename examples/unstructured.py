@@ -25,10 +25,9 @@
 ######################################################################################
 
 # ************************************************************************
-# * 高层 unstructured_grid_to_vtk 函数示例。                        *
-# * This example shows how to export a unstructured grid give its        *
-# * nodes and topology through a connectivity and offset lists.          *
-# * Check the VTK file format for details of the unstructured grid.      *
+# * 高层 unstructured_grid_to_vtk 函数示例：                              *
+# * 根据节点坐标及由 connectivity/offset 列表描述的拓扑结构，              *
+# * 导出非结构化网格。网格文件格式细节参见 VTK 文件格式文档。              *
 # ************************************************************************
 from pathlib import Path
 

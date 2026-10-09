@@ -44,6 +44,12 @@ output = points_to_vtk(
 
 新接口的关键字参数名也做了同步调整（如 `cellData` → `cell_data`），旧接口仍兼容两种写法。
 
+## 来源与许可证
+
+本项目衍生自 [pyevtk](https://github.com/pyscience-projects/pyevtk)，原作者为
+Paulo A. Herrera，采用 MIT 协议。本仓库保留了原始版权与许可证声明，详见
+[`LICENSE`](LICENSE) 和 [`src/funvtk/LICENSE`](src/funvtk/LICENSE)。
+
 ---
 
 ## 关于 farfarfun

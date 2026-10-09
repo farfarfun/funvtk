@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "funvtk"
-version = "1.0.10"
+version = "1.0.10.dev0"
 description = "纯 Python VTK XML 文件导出库，支持结构化和非结构化网格、点集与折线"
 readme = "README.md"
 requires-python = ">=3.10"

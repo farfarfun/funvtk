@@ -106,7 +106,7 @@ def image_to_vtk(
     """将规则图像数据写入 VTK 文件。
 
     ``path`` 不含扩展名；``origin`` 和 ``spacing`` 分别指定网格原点与间距。
-    ``cellData``、``pointData`` 是名称到数据数组的映射，至少提供其中一个以推断
+    ``cell_data``、``point_data`` 是名称到数据数组的映射，至少提供其中一个以推断
     网格尺寸。``comments`` 会写入 XML 头部。返回生成文件的绝对路径。
     """
     if cell_data is None and point_data is None:
@@ -155,8 +155,8 @@ def rectilinear_to_vtk(
 ) -> str:
     """将直角坐标网格写入 VTK 文件。
 
-    ``x``、``y``、``z`` 必须是一维节点坐标数组。可通过 ``cellData`` 和
-    ``pointData`` 写入单元及点数据，通过 ``comments`` 写入头部注释。
+    ``x``、``y``、``z`` 必须是一维节点坐标数组。可通过 ``cell_data`` 和
+    ``point_data`` 写入单元及点数据，通过 ``comments`` 写入头部注释。
     返回生成文件的绝对路径。
     """
     if not (x.ndim == 1 and y.ndim == 1 and z.ndim == 1):
@@ -202,7 +202,7 @@ def structured_to_vtk(
     """将逻辑结构网格写入 VTK 文件。
 
     ``x``、``y``、``z`` 必须是形状相同的三维节点坐标数组。可通过
-    ``cellData`` 和 ``pointData`` 写入单元及点数据。返回生成文件的绝对路径。
+    ``cell_data`` 和 ``point_data`` 写入单元及点数据。返回生成文件的绝对路径。
     """
     if not (x.ndim == 3 and y.ndim == 3 and z.ndim == 3):
         raise ValueError("x、y、z 必须是三维数组")
@@ -245,7 +245,7 @@ def grid_to_vtk(
     """根据坐标维度写入直角坐标网格或逻辑结构网格。
 
     一维 ``x``、``y``、``z`` 生成直角坐标网格，三维数组生成逻辑结构网格。
-    ``cellData``、``pointData`` 分别提供单元和点数据。返回生成文件的绝对路径。
+    ``cell_data``、``point_data`` 分别提供单元和点数据。返回生成文件的绝对路径。
     """
     # 推断网格尺寸
     start = (0, 0, 0)
@@ -431,7 +431,7 @@ def lines_to_vtk(
     """将两点一组的线段及关联数据写入 VTK 文件。
 
     ``x``、``y``、``z`` 必须是长度相同且元素数为偶数的一维数组。
-    ``cellData`` 和 ``pointData`` 分别提供线段和顶点数据。返回生成文件的绝对路径。
+    ``cell_data`` 和 ``point_data`` 分别提供线段和顶点数据。返回生成文件的绝对路径。
     """
     if not (x.size == y.size == z.size):
         raise ValueError("x、y、z 的长度必须相同")
@@ -499,8 +499,8 @@ def poly_lines_to_vtk(
 ) -> str:
     """将包含不同点数的折线及关联数据写入 VTK 文件。
 
-    ``x``、``y``、``z`` 保存连续排列的顶点坐标，``pointsPerLine`` 指定每条
-    折线的点数。``cellData`` 和 ``pointData`` 分别提供折线和顶点数据。
+    ``x``、``y``、``z`` 保存连续排列的顶点坐标，``points_per_line`` 指定每条
+    折线的点数。``cell_data`` 和 ``point_data`` 分别提供折线和顶点数据。
     返回生成文件的绝对路径。
     """
     if not (x.size == y.size == z.size):
@@ -575,7 +575,7 @@ def unstructured_grid_to_vtk(
     """将非结构网格及关联数据写入 VTK 文件。
 
     ``x``、``y``、``z`` 保存顶点坐标；``connectivity``、``offsets`` 和
-    ``cell_types`` 描述单元拓扑。``cellData`` 与 ``pointData`` 分别提供单元和
+    ``cell_types`` 描述单元拓扑。``cell_data`` 与 ``point_data`` 分别提供单元和
     顶点数据。返回生成文件的绝对路径。
     """
     if not (x.size == y.size == z.size):
